@@ -1,0 +1,7 @@
+# 六子棋 Connect6 依赖
+# PostgreSQL 存档
+psycopg[binary]>=3.1
+# 音乐转码（非 wav 曲目切歌用，缺失时自动回退 wav）
+soundfile>=0.12
+# 打包
+pyinstaller>=6.0

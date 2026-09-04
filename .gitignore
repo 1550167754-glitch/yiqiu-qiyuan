@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# 打包产物（如需保留 dist，注释掉下面两行）
+build/
+dist/
+*.spec
+
+# ---- 敏感配置：含真实数据库口令 / LLM API Key，绝不入库 ----
+# 只提交去敏占位模板 config.example/*.ini（通过 ! 恢复），供他人参考结构。
+config/
+config.example/
+!config.example/*.ini
+!config.example/
+
+# ---- 运行期诊断日志 ----
+freeze_dump.log
+end_dialog_error.log
+
+# ---- 音乐资源：无损 WAV 体积过大(273MB)，不适合 git 存储 ----
+# 且可能涉及音频版权，不在公开仓库传播。运行时从本地 assets/music 加载。
+assets/music/
