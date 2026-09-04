@@ -1,12 +1,11 @@
-# 六子棋 Connect6（计算机博弈 · 整理发布版）
+# 六子棋 Connect6（计算机博弈）
 
 面向计算机博弈比赛的六子棋游戏，含**本地 AI**（极大极小 + Alpha-Beta + PVS +
 置换表 + 走法排序 + 迭代加深 + 威胁搜索）、**大模型引擎**（DeepSeek / 千问）、
 三种对局模式、PostgreSQL 战绩存档（可选）。
 
-> 本目录为整理后的规范发布版：源码、资源、配置分层存放；打包产物放入
-> `dist\`；**无损 Hi-Fi 音乐**统一收于 `assets\music\` 并完整纳入项目，
-> 不丢失任何资源。
+> 本公开仓库只含源码、开源字体与音效。运行时所需的无损背景音乐与真实 API
+> 密钥**不包含**（见下方"仓库说明"），clone 后可直接编译运行，功能完整。
 
 ---
 
@@ -36,17 +35,22 @@
 │       ├─ replay.py    棋谱回放窗口
 │       └─ paths.py     资源路径解析（开发 / 打包通用）
 ├─ assets/              资源根
-│   ├─ music/           ★ 无损 Hi-Fi 音乐目录（WAV，6 首，约 273MB）
 │   ├─ sounds/          音效（点击/落子/胜/负）
-│   ├─ fonts/           艺术字体 TTF
+│   ├─ fonts/           艺术字体 TTF（Google Fonts 开源）
 │   ├─ icon.ico         窗口/程序图标
 │   ├─ icon64.png
 │   └─ logo.png
-├─ config/              配置
-│   ├─ database.ini     PostgreSQL 连接
-│   └─ llm.ini          大模型 API 密钥
+├─ config.example/      配置占位模板（database.ini / llm.ini，不含真实密钥）
 └─ dist/                编译产物（build_exe.bat 生成，自包含可运行）
 ```
+
+### 仓库说明
+
+- **背景音乐 `assets/music/`（无损 WAV，约 273MB）不在仓库内**：体积过大且可能
+  涉及音频版权。运行时该目录不存在会自动跳过，功能不受影响；如需音乐，把 WAV
+  放入本地 `assets/music/` 即可。
+- **`config/`（真实配置）不在仓库内**：含 PostgreSQL 口令与 LLM API Key，属敏感
+  信息。请复制 `config.example/` 为 `config/` 并按需填写。
 
 ---
 
