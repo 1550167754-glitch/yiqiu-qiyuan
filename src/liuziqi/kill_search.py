@@ -65,7 +65,12 @@ def _find_groups(cells, wc: int):
     groups = []
     for idx, (a, b) in enumerate(runs):
         groups.append((a, b, 0))
-        if idx + 1 < len(runs) and runs[idx + 1][0] - b == 2:
+        # 铁律（2026-10-01 截图复盘）：联合两段的前提是中间那格真的是"空隙"
+        # （cells==0）。旧版只看距离，把"隔着一个对方子"的两段误连成跳形
+        # （如 X X 【挡】 X 被当成跳三）→ 假双三/假活四 → VCT 假必胜，
+        # AI 面对对方跳活三拒不防守。
+        if (idx + 1 < len(runs) and runs[idx + 1][0] - b == 2
+                and cells[b + 1] == 0):
             groups.append((a, runs[idx + 1][1], 1))
     out = []
     for (a, b, gap) in groups:
@@ -652,6 +657,12 @@ class KillSearch:
                 return b
             return None
         # MAX 层着法生成：冲四 + 活三（双威胁优先）
+        # 对方"反手冲四"点（每节点只算一次，循环内复用）。
+        # 铁律（2026-10-01 截图复盘）：只要对方存在"落子即成四"的反手，
+        # 三三/四三捷径一律不成立——对方反四逼我方堵子、打断我方威胁链，
+        # 我方的"必胜"是假的。旧版捷径跳过该验证 → 误判必胜 →
+        # 面对对方跳活三拒不防守（走 (2,5)/(3,5) 而不堵 (6,5)）。
+        foe_fours = self._four_moves(self.foe, cands)
         scored = []
         for (x, y) in cands:
             if self.board.grid[y][x] != EMPTY:
@@ -679,21 +690,22 @@ class KillSearch:
                 self._undo1()
                 continue
             if fps and len(fps) >= 2:
-                self._undo1()                 # 活四 / 双四 → 必胜
+                self._undo1()                 # 活四/双四：我下一手连五比对方反四快 → 必胜
                 return m
-            if n3 >= 2:
-                self._undo1()                 # 双活三（三三）→ 对手只能堵一处 → 必胜
-                return m
-            if fps and n3 > 0:
-                self._undo1()                 # 冲四+活三（四三）→ 对手无法同时封堵 → 必胜
-                return m
+            if not foe_fours:
+                if n3 >= 2:
+                    self._undo1()             # 双活三且对方无反手四 → 对手堵不完 → 必胜
+                    return m
+                if fps and n3 > 0:
+                    self._undo1()             # 四三且对方无反手四 → 必胜
+                    return m
             replies: list = []
             if fps:
                 replies.extend(list(fps)[:2])             # 堵成五点（强制）
             if n3:
                 replies.extend(self._threat_breaks(m[0], m[1], self.me))
             # 对手反击：优先冲四，其次活三
-            for (cm, _cfps) in self._four_moves(self.foe, cands)[:4]:
+            for (cm, _cfps) in foe_fours[:4]:
                 replies.append(cm)
             seen: set = set()
             rr = []
