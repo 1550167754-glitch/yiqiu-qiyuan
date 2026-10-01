@@ -160,21 +160,105 @@ def fast_black_winrate(board: Board) -> float:
 
 
 # ----------------------------------------------------------------------
-# 4/5. 蒙特卡洛：随机自对弈统计黑方胜率（内存安全：只复用 1 块临时棋盘）
+# 4/5. 蒙特卡洛：启发式 rollout 自对弈统计黑方胜率（全局胜率主信号）
 # ----------------------------------------------------------------------
-def mc_black_winrate(board: Board, sims: int = 300,
-                     time_budget: float = 0.3, seed: int | None = None) -> float:
-    """从当前局面随机走子到终局，统计黑方胜率。
+# 依据 AlphaGo value network 的核心思想：胜率 = 从当前局面出发、双方按
+# 某种"近似合理"策略下到终局，最终获胜的概率。纯随机 rollout 双方都极弱、
+# 方差巨大（每步 noise 大、单点独立抖动），故改为"启发式 rollout"——
+# 优先走强手/堵对方强手，使模拟更接近真实对局、方差大幅下降，曲线稳定可信。
+#
+# 强手优先级（每步，先"我能赢/必须堵"，再"造威胁/防威胁"，最后随机）：
+#   1. 己方一手成五（立即胜）；
+#   2. 堵对方一手成五（唯一/最优先）；
+#   3. 己方走成活四 / 冲四；
+#   4. 堵对方活四 / 冲四；
+#   5. 己方走成活三；
+#   6. 其余空点随机。
+_HEURISTIC_DIRS = ((1, 0), (0, 1), (1, 1), (1, -1))
+
+
+def _count_dir(grid, n, x, y, dx, dy, color):
+    """(x,y) 处沿 (dx,dy) 若落 color，连成的最长连续子数（含该点）。"""
+    cnt = 1
+    i, j = x + dx, y + dy
+    while 0 <= i < n and 0 <= j < n and grid[j][i] == color:
+        cnt += 1
+        i += dx
+        j += dy
+    i, j = x - dx, y - dy
+    while 0 <= i < n and 0 <= j < n and grid[j][i] == color:
+        cnt += 1
+        i -= dx
+        j -= dy
+    return cnt
+
+
+def _best_move_after(board, color, rng, cands):
+    """启发式 rollout 的单步选点：返回落点 (x, y)。
+
+    按强手优先级降级选择；同类之间用 rng 随机，保证模拟有多样性
+    （否则整局每个分支都走同一手，退化成一条确定路径、方差反而爆炸）。
+    """
+    n = board.size
+    g = board.grid
+    wc = board.win_count
+    foe = OPPOSITE[color]
+
+    win = []       # 己方一手成五
+    block5 = []    # 堵对方一手成五
+    make4 = []     # 己方活四/冲四
+    block4 = []    # 堵对方活四/冲四
+    make3 = []     # 己方活三
+    rest = []
+    for (x, y) in cands:
+        if g[y][x] != EMPTY:
+            continue
+        # 己方落子后的棋力
+        my_best = max(_count_dir(g, n, x, y, dx, dy, color) for dx, dy in _HEURISTIC_DIRS)
+        if my_best >= wc:
+            win.append((x, y))
+            continue
+        # 对方若落此点的棋力（堵的意义 = 对方在此会变强）
+        foe_best = max(_count_dir(g, n, x, y, dx, dy, foe) for dx, dy in _HEURISTIC_DIRS)
+        if foe_best >= wc:
+            block5.append((x, y))
+            continue
+        # 己方能否形成活四/冲四（连 wc-1 及以上）
+        if my_best >= wc - 1:
+            make4.append((x, y))
+            continue
+        # 对方是否会因此成活四/冲四 → 需要堵
+        if foe_best >= wc - 1:
+            block4.append((x, y))
+            continue
+        # 己方活三
+        if my_best >= wc - 2:
+            make3.append((x, y))
+            continue
+        rest.append((x, y))
+
+    for pool in (win, block5, make4, block4, make3, rest):
+        if pool:
+            return pool[rng.randrange(len(pool))]
+    return None
+
+
+def mc_black_winrate(board: Board, sims: int = 5000,
+                     time_budget: float = 3.0, seed: int | None = None) -> float:
+    """从当前局面做启发式 rollout 自对弈到终局，统计黑方胜率。
+
+    这是"纵观全局"的胜率主信号：不是看当前一步的局部优势，而是统计
+    "从此刻起、双方近似合理对弈到终局，黑方最终获胜的比例"。
 
     安全实现：
-        - 仅 snapshot() 一次创建工作棋盘，之后随机走子全程 place/undo 复用，
-          不复制成百上千份棋盘对象（杜绝内存爆炸）；
-        - 加入 time_budget 兜底，超时就提前返回当前统计（避免卡线程太久）；
+        - 仅 snapshot() 一次创建工作棋盘，之后全程 place/undo 复用，
+          不复制海量棋盘对象（杜绝内存爆炸）；
+        - time_budget 兜底，超时提前返回当前统计（避免卡后台线程太久）；
         - 当前局面已见胜负时直接返回，不空耗模拟。
     注意：只读 board，不改动调用方传入的棋盘。
     """
     n = board.size
-    # 当前局面若已见胜负（最后一手连六），直接判黑方，避免空耗模拟。
+    # 当前局面若已见胜负（最后一手连成），直接判黑方。
     if board.move_count:
         lx, ly, _ = board.history[-1]
         if board.check_win(lx, ly) is not None:
@@ -212,7 +296,10 @@ def mc_black_winrate(board: Board, sims: int = 300,
                     cands = work.get_candidates(radius=2)
                 if not cands:
                     break
-                px, py = rng.choice(cands)
+                mv = _best_move_after(work, side, rng, cands)
+                if mv is None:
+                    break
+                px, py = mv
                 work.place(px, py, side)
                 if work.check_win(px, py) is not None:
                     winner = side
@@ -238,17 +325,49 @@ def mc_black_winrate(board: Board, sims: int = 300,
 
 
 # ----------------------------------------------------------------------
-# 6. 搜索校正：把对局方 negamax 分值换算成黑方胜率
+# 6. 搜索校正：把对局方 negamax 分值换算成黑方胜率（仅作先验微调）
 # ----------------------------------------------------------------------
+# 依据：胜率主信号是蒙特卡洛（真正"纵观全局"）。搜索分值只用来给 MC 一个
+# 先验、加速收敛 / 降低单点噪声，不再直接当作胜率输出。
+# last_val 量级来自 ai._Eval（活三 6000 / 冲四 20000 / 活四 60000 / 连五 1e7），
+# 旧实现用一刀切 _SCALE=26000 的 sigmoid 硬压，导致"一个活四就 91%、连五顶 98%"
+# 完全不成比例。改为分段线性标定，贴合棋型分值的实际含义。
+_SCORE_STOPS = (
+    (0.0,       0.50),   # 均势
+    (6000.0,    0.62),   # 活三级别
+    (20000.0,   0.78),   # 冲四级别
+    (60000.0,   0.90),   # 活四级别
+    (500000.0,  0.97),   # 五连开放
+    (1000000.0, 0.99),   # 接近必胜
+)
+
+
+def _calibrate_score(s: float) -> float:
+    """把搜索分值 s（越大对黑越有利，可正可负）分段线性标定为胜率。
+
+    负分（白优）按对称表镜像到 [0, 0.5)：先取绝对值走正向标定，再取 1-p。
+    """
+    if s >= 0:
+        if s >= _SCORE_STOPS[-1][0]:
+            return _SCORE_STOPS[-1][1]
+        for (s0, p0), (s1, p1) in zip(_SCORE_STOPS, _SCORE_STOPS[1:]):
+            if s <= s1:
+                return p0 + (p1 - p0) * (s - s0) / (s1 - s0)
+        return _SCORE_STOPS[-1][1]
+    # 负分：镜像
+    p_neg = _calibrate_score(-s)
+    return 1.0 - p_neg
+
+
 def search_score_to_black(search_score: float, mover: int, board: Board) -> float:
     """把对局方(mover)的 negamax 分值换算为黑方胜率。
 
     search_score 越大 mover 越有利。若 mover==黑，score 越高黑越好；mover==白则反向。
+    仅作先验：主信号是蒙特卡洛，此值不直接顶替曲线点。
     """
     if board is not None and board.move_count == 0:
         return 0.5
     s = float(search_score)
     if mover != BLACK:
         s = -s
-    p = _sigmoid(s / _SCALE)
-    return _clamp(p)
+    return _clamp(_calibrate_score(s))
