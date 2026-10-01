@@ -36,8 +36,9 @@ class Board:
         history    : 落子历史栈，元素为 (x, y, color)
     """
 
-    def __init__(self, size: int = SIZE):
+    def __init__(self, size: int = SIZE, win_count: int = WIN_COUNT):
         self.size = size
+        self.win_count = win_count
         self.grid = [[EMPTY] * size for _ in range(size)]
         self.move_count = 0
         self.history: list[tuple[int, int, int]] = []
@@ -57,11 +58,12 @@ class Board:
         return self.grid[y][x]
 
     def snapshot(self) -> "Board":
-        """拷贝当前棋盘（深拷贝 grid / history / move_count）。
+        """拷贝当前棋盘（深拷贝 grid / history / move_count / win_count）。
 
-        用于后台线程读取局面（如 LLM 胜率评估），避免与主线程竞争。
+        用于后台线程读取局面（如 LLM 胜率评估、AI 搜索快照），避免与主线程竞争。
+        注意：必须原样携带 win_count，否则五子棋快照会退化为默认连六规则。
         """
-        b = Board(self.size)
+        b = Board(self.size, self.win_count)
         b.grid = [row[:] for row in self.grid]
         b.move_count = self.move_count
         b.history = list(self.history)
@@ -125,7 +127,7 @@ class Board:
                 line.insert(0, (i, j))
                 i -= dx
                 j -= dy
-            if len(line) >= WIN_COUNT:
+            if len(line) >= self.win_count:
                 return line
         return None
 
@@ -153,7 +155,7 @@ class Board:
                         line.append((i, j))
                         i += dx
                         j += dy
-                    if len(line) >= WIN_COUNT:
+                    if len(line) >= self.win_count:
                         return c, line
         return None, None
 

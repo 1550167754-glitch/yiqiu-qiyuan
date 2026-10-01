@@ -16,10 +16,16 @@ config.example/
 !config.example/*.ini
 !config.example/
 
-# ---- 运行期诊断日志 ----
+# ---- 运行期诊断日志 / 数据（统一收进固定目录，不入库） ----
+logs/
+data/
 freeze_dump.log
 end_dialog_error.log
 
 # ---- 音乐资源：无损 WAV 体积过大(273MB)，不适合 git 存储 ----
 # 且可能涉及音频版权，不在公开仓库传播。运行时从本地 assets/music 加载。
 assets/music/
+
+# ---- 工具/元数据目录：不进版本库 ----
+.workbuddy/
+.slidep/
