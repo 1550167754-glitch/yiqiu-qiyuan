@@ -431,6 +431,12 @@ class AlphaBetaEngine:
         self.candidate_limit = candidate_limit
         self.pair_top = pair_top
         self.seed = seed
+        # 稳定随机源：用于打破"并列打分取第一"的确定性偏差
+        # （候选点按 (y,x) 升序，对称局面并列时若机械取首项会永远偏向
+        #   左上角，导致 AI 每局固定往左上斜线冲）。随机源独立于主随机，
+        #   可复现（同 seed 同棋路）。
+        self._rng = random.Random(seed)
+        self._tie_n = 1   # _pick_tie 的并列计数（每次打分循环前重置）
         self.nodes = 0
         self.deadline = 0.0
         self.tt: dict[int, tuple] = {}
@@ -714,6 +720,7 @@ class AlphaBetaEngine:
         多方向评估：优先选"落子后多方向同时变强"的点（棋路多变，不只单线）。
         """
         best, best_s = None, -1
+        self._tie_n = 1
         for (x, y) in cands:
             if not board.is_empty(x, y):
                 continue
@@ -724,12 +731,13 @@ class AlphaBetaEngine:
             connect = self._connectivity(board, color, x, y)
             board.undo()
             if lvl >= THREAT_RUSH4:
-                s = lvl * 1_000_000 + gain + connect * 1000
-                if s > best_s:
-                    best_s, best = s, (x, y)
+                s = lvl * 1_000_000 + gain + connect * 1000 \
+                    + self._center_bias(board, x, y)
+                best, best_s, _ = self._pick_tie(best, best_s, (x, y), s)
         if best is not None:
             return best
         # 无冲四，退而求活三（同样看多方向连接）
+        self._tie_n = 1
         for (x, y) in cands:
             if not board.is_empty(x, y):
                 continue
@@ -739,9 +747,8 @@ class AlphaBetaEngine:
             connect = self._connectivity(board, color, x, y)
             board.undo()
             if lvl >= THREAT_LIVE3:
-                s = gain + connect * 1000
-                if s > best_s:
-                    best_s, best = s, (x, y)
+                s = gain + connect * 1000 + self._center_bias(board, x, y)
+                best, best_s, _ = self._pick_tie(best, best_s, (x, y), s)
         return best
 
     def _connectivity(self, board: Board, color: int, x: int, y: int) -> int:
@@ -764,6 +771,36 @@ class AlphaBetaEngine:
             total += cnt
         return total
 
+    def _center_bias(self, board: Board, x: int, y: int) -> float:
+        """距棋盘中心的切比雪夫距离惩罚（极轻，仅用于开局打破对称）。
+
+        空盘/开局盘面高度对称时，各对称点打分完全并列，单纯靠并列随机
+        仍可能出现"连走同一侧"。此偏置给靠近中心的点一个微小正分，
+        使 AI 开局更自然地向中心铺开而非贴角。权重刻意压到不影响
+        任何中盘正常棋感（中盘候选点本就聚集在棋子附近，差异远大于此）。
+        """
+        n = board.size
+        cx = cy = (n - 1) / 2
+        return -max(abs(x - cx), abs(y - cy)) * 1.0
+
+    def _pick_tie(self, best: tuple, best_s: float, cand: tuple, s: float):
+        """并列打分时的公平随机择优（水塘抽样）。
+
+        当 s == best_s 时，以 1/n 概率（n=当前并列最优数）替换 best，
+        保证所有并列最优点**等概率**被选中，消除"候选点按 (y,x) 升序、
+        机械取首项导致永远偏向左上角/右下角"的确定性偏差。
+
+        （不能用 `if s == best_s and rng.random() < 0.5`：那种写法对
+        一批并列点会产生"越靠后越难胜出"的偏置，实测会集中到列表末尾。）
+        """
+        if s > best_s:
+            return (cand, s, 1)
+        if s == best_s:
+            self._tie_n += 1
+            if self._rng.random() < 1.0 / self._tie_n:
+                return (cand, s, self._tie_n)
+        return (best, best_s, self._tie_n)
+
     def _best_block_with_counter(self, board: Board, color: int, cands):
         """主动权在对方：找对方活四/冲四/活三的堵点，选堵完能反制的那个。
 
@@ -778,15 +815,16 @@ class AlphaBetaEngine:
         rush_pts = _win_points(board, opp, cands)
         if rush_pts:
             best, best_s = None, -1
+            self._tie_n = 1
             for p in rush_pts:
                 if not board.is_empty(p[0], p[1]):
                     continue
                 board.place(p[0], p[1], color)
                 s = self._single_gain(board, color, p) + \
-                    self._connectivity(board, color, p[0], p[1]) * 1000
+                    self._connectivity(board, color, p[0], p[1]) * 1000 + \
+                    self._center_bias(board, p[0], p[1])
                 board.undo()
-                if s > best_s:
-                    best_s, best = s, p
+                best, best_s, _ = self._pick_tie(best, best_s, p, s)
             if best is not None:
                 return best
 
@@ -804,15 +842,20 @@ class AlphaBetaEngine:
         if block_cands:
             # 多个有效堵点里，选"堵完己方威胁最强 / 能反制"的那个
             best, best_s = None, None
+            self._tie_n = 1
             for p in block_cands:
                 board.place(p[0], p[1], color)
                 self_lvl = _strongest_threat(board, color)
                 self_gain = self._single_gain(board, color, p)
                 connect = self._connectivity(board, color, p[0], p[1])
                 board.undo()
-                s = self_lvl * 20_000 + self_gain + connect * 1000
-                if best_s is None or s > best_s:
-                    best_s, best = s, p
+                s = self_lvl * 20_000 + self_gain + connect * 1000 + \
+                    self._center_bias(board, p[0], p[1])
+                if best_s is None:
+                    best, best_s = p, s
+                    self._tie_n = 1
+                else:
+                    best, best_s, _ = self._pick_tie(best, best_s, p, s)
             return best
 
         # 无直接堵点（对方威胁非活三/冲四级别）：退回"攻防兼备"
@@ -828,6 +871,7 @@ class AlphaBetaEngine:
         opp = OPPOSITE[color]
         opp_lvl0 = _strongest_threat(board, opp)
         best, best_s = None, None
+        self._tie_n = 1
         for (x, y) in cands:
             if not board.is_empty(x, y):
                 continue
@@ -838,9 +882,13 @@ class AlphaBetaEngine:
             board.undo()
             denial = max(0.0, opp_lvl0 - opp_after)
             connect = self._connectivity(board, color, x, y)
-            s = d_me + denial * 80_000 + connect * 300 - 0.25 * d_foe
-            if best_s is None or s > best_s:
-                best_s, best = s, (x, y)
+            s = d_me + denial * 80_000 + connect * 300 - 0.25 * d_foe + \
+                self._center_bias(board, x, y)
+            if best_s is None:
+                best, best_s = (x, y), s
+                self._tie_n = 1
+            else:
+                best, best_s, _ = self._pick_tie(best, best_s, (x, y), s)
         return best
 
     def _leaf_kill_value(self, ev, color: int, ply: int):
