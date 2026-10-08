@@ -62,6 +62,34 @@ def resource(*rel: str, writable: bool = False) -> str:
     return first_existing(bnd, ext)
 
 
+def logs_dir() -> str:
+    """统一日志目录（固定，不存在则创建一次）。
+
+    所有运行期日志（看门狗 freeze_dump.log、异常堆栈等）都写到这里，
+    避免每次启动在项目根目录散落文件；目录固定复用，不会重复新建。
+    """
+    d = os.path.join(app_base(), "logs")
+    try:
+        os.makedirs(d, exist_ok=True)
+    except OSError:
+        d = app_base()
+    return d
+
+
+def data_dir() -> str:
+    """统一数据目录（固定，不存在则创建一次）。
+
+    数据库 / 记录相关的运行期产物（生成的数据库引导脚本、本地存档缓存等）
+    统一放这里，保证始终复用同一个固定目录，不在启动时新建。
+    """
+    d = os.path.join(app_base(), "data")
+    try:
+        os.makedirs(d, exist_ok=True)
+    except OSError:
+        d = app_base()
+    return d
+
+
 def project_root() -> str:
     """兼容旧接口：返回项目根（开发环境）/ exe 同目录（打包环境）。"""
     return app_base()

@@ -1,0 +1,21 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>迭代四：体积清理诊断</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>第四轮解决的是「工程存不下、发不出」的问题，靠的是诊断而不是凭感觉删</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>935MB 的工程在磁盘上太臃肿，复制、备份、打包都很累赘。这一轮做了一次体积诊断，逐目录扫描并按大小排序。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>结论很明确：627MB 是同一份素材在多个位置留下的重复副本，另外还有 PyInstaller 打包产生的中间目录。清理之后工程体积降到约 308MB，目录结构一眼可读。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>这次清理不只是「省空间」——它同时让发布体积可控、让 .gitignore 规则更清楚，为后面「可发布」这个目标扫掉了一个硬障碍。</Text>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>先测量、再动手：没有体积扫描，就不知道 627MB 到底是素材、缓存还是重复副本。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>33 / 64</Text>
+  </Box>
+</Slide>

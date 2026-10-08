@@ -104,6 +104,15 @@ def draw_3d_button(c, w, h, *, base, fg, text, font,
     4× 超采样渲染出真正的平滑边缘与半透明玻璃高光，是「锐利 + 通透」的
     根本解。PIL 不可用时回退到内置矢量绘制。
     """
+    # 关键防御：延迟回调（按钮释放后的 after_idle 指针对账）可能在控件
+    # 被销毁之后才执行。此时该控件的 Tcl 路径已失效，任何 cget/delete
+    # 都会抛 TclError（invalid command name）。这里统一拦截，作为最后一道
+    # 防线，保护所有调用方（GlowButton / 弹窗按钮 / MediaButton）。
+    try:
+        if not c.winfo_exists():
+            return
+    except Exception:
+        return
     c.delete("all")
     try:
         w = int(w); h = int(h)

@@ -1,0 +1,46 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>原理 · 总体分层与依赖方向</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>四层职责单一，依赖方向单向，任何一层都可以被单独替换或测试</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column" }}>
+  <Box style={{ flexDirection: "row", height: "100%", gap: 30, alignItems: "center" }}>
+    <Box style={{ width: 520, flexDirection: "column", justifyContent: "center", gap: 10, alignItems: "center" }}>
+    <svg width="920" height="300" viewBox="0 0 920 300" style={{ background: "rgba(140,90,43,0.05)", borderRadius: 10, maxWidth: "100%", height: "auto" }}>
+      <rect x="40" y="22" width="840" height="46" rx="8" fill="#8C5A2B"/><text x="60" y="51" font-size="17" fill="#F5E3BE" font-family="sans-serif">表现层  gui / xiangqi_gui —— 只负责画与响应，不写规则</text>
+      <rect x="40" y="86" width="840" height="46" rx="8" fill="#B3271E"/><text x="60" y="115" font-size="17" fill="#F5E3BE" font-family="sans-serif">逻辑层  game / board / xiangqi —— 规则、胜负、合法着法</text>
+      <rect x="40" y="150" width="840" height="46" rx="8" fill="#2A2118"/><text x="60" y="179" font-size="17" fill="#F5E3BE" font-family="sans-serif">智能层  ai / kill_search / pikafish_engine —— 只吃棋盘出着法</text>
+      <rect x="40" y="214" width="840" height="46" rx="8" fill="#8C5A2B" opacity="0.72"/><text x="60" y="243" font-size="17" fill="#F5E3BE" font-family="sans-serif">基础层  paths / fonts / music / sounds / winmm / database</text>
+      <line x1="460" y1="68" x2="460" y2="86" stroke="#2A2118" stroke-width="2"/>
+      <line x1="460" y1="132" x2="460" y2="150" stroke="#2A2118" stroke-width="2"/>
+      <line x1="460" y1="196" x2="460" y2="214" stroke="#2A2118" stroke-width="2"/>
+    </svg>
+      <Text style={{ fontSize: 14, lineHeight: 1.4, color: "rgba(42,33,24,0.6)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>依赖只向下：上层消费下层服务，下层永不反向调用上层</Text>
+    </Box>
+    <Box style={{ flex: 1, flexDirection: "column", justifyContent: "center", gap: 6 }}>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>表现层不含规则：换个界面，棋照样能下。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>智能层只有一个入口 get_move(board, color, stones)，换引擎不动上层。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>基础层无业务语义，谁都能调，但它谁也不调。</Text>
+    </Box>
+    </Box>
+  </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>分层的收益是可验证性：逻辑层与渲染解耦后，规则可以脱离界面单独跑测试。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>15 / 64</Text>
+  </Box>
+</Slide>

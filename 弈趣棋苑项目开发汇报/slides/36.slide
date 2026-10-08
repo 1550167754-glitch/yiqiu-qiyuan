@@ -1,0 +1,22 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>质量保障：四道验证手段</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>四条手段分别覆盖「空间几何 / 交互流程 / 数值正确 / 历史追溯」</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>① 几何自检：覆盖 640×520 到 1920×1080 共 10 种窗口尺寸，验证棋盘居中、点击映射可逆（点哪是哪）、棋子不重叠。这是最容易被忽略、也最容易出 bug 的一类问题。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>② 端到端脚本：用 venv 里的真实 Tk 实例驱动对话与落子，断言状态、控件引用与可见性，而不是只测纯函数。这样能抓到「逻辑对但界面没刷新」这类问题。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>③ 数学推导：胜率的 Elo 锚点、评估函数的对称性，用公式验证而不是凭感觉。凡是能用公式说清的地方，就不留主观判断。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>④ 版本取证：用 git show / git log -S 比对历史，定位「这个缺陷从哪一次提交开始存在」，避免在错误的前提上乱改。</Text>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>这四条不是流程规定，而是被真实 bug 逼出来的——每一条背后都有一次翻车。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>36 / 64</Text>
+  </Box>
+</Slide>

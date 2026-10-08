@@ -1,0 +1,22 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>四条路线：从可交付走向可发布</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>四条线对应四个发布前置条件：轻量、可回归、安全、体验好</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>① 性能与体积：把 assets/music 里的 WAV 转成 MP3 瘦身；清理 theme_boards 中已失效的 grain 冗余字段；继续压缩 dist 相关产物（累计可释放约 627MB 中尚未处理的部分）。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>② 模块化与测试：当前验证以几何自检脚本和端到端脚本为主，下一步补一个 tests/ 自动化回归套件，让每次改动都有护栏，而不是每次都靠临时脚本。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>③ 发布准备：把 PyInstaller 打包流程做全量验证，并在发布前完成敏感配置脱敏——config/llm.ini 里的 API Key 绝不能随产物或仓库外流。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>④ 体验深化：沿「真实、克制、精致」继续打磨 3D 立体感与光照，坚持一次只推进一个改进点的节奏，避免大改引入回归。</Text>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>发布的前置条件不是功能数量，而是「体积可控 + 回归可自动跑 + 敏感信息不外流」这三件硬事。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>57 / 64</Text>
+  </Box>
+</Slide>

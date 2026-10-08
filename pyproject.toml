@@ -1,0 +1,16 @@
+[project]
+name = "yiqiu-qiyuan"
+version = "1.0.0"
+description = "弈趣棋苑：六子棋 / 五子棋 / 中国象棋 桌面棋类合集（Python + Tkinter）"
+requires-python = ">=3.13"
+dependencies = [
+    "Pillow>=10.0",
+    "psycopg[binary]>=3.1",
+    "soundfile>=0.12",
+    "pyinstaller>=6.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"

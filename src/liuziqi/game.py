@@ -15,7 +15,7 @@ game.py —— 对局流程控制模块（状态机）
 """
 from __future__ import annotations
 
-from .board import Board, BLACK, WHITE, OPPOSITE, COLOR_NAMES
+from .board import Board, BLACK, WHITE, OPPOSITE, COLOR_NAMES, SIZE, WIN_COUNT
 from .ai import AI
 from .llm_ai import LLMAI
 
@@ -28,7 +28,7 @@ class Player:
     """一名棋手（人类 / 本地 AI / 大模型 LLM）。
 
     属性：
-        name       : 显示名（如 "玩家"、"AI-hard"、"DeepSeek(黑)"）
+        name       : 显示名（如 "玩家"、"AI-hard"、"千问(黑)"）
         kind       : 'human' / 'ai' / 'llm'
         difficulty : 本地 AI 难度（kind=='ai' 时有效）
         engine     : 落子引擎。本地 AI 为 AI 实例，LLM 为 LLMAI 实例，
@@ -43,7 +43,7 @@ class Player:
         if kind == "ai":
             self.engine = AI(difficulty=difficulty, seed=None)
         elif kind == "llm":
-            self.engine = llm if llm is not None else LLMAI("deepseek")
+            self.engine = llm if llm is not None else LLMAI("qwen")
         else:
             self.engine = None
 
@@ -70,8 +70,15 @@ class Game:
                  white: Player | None = None,
                  board: Board | None = None,
                  time_total: int = 1200,
-                 time_per_move: int = 60):
-        self.board = board if board is not None else Board()
+                 time_per_move: int = 60,
+                 variant: str = "connect6",
+                 size: int = SIZE,
+                 win_count: int = WIN_COUNT):
+        if board is not None:
+            self.board = board
+        else:
+            self.board = Board(size=size, win_count=win_count)
+        self.variant = variant
         if black is None:
             black = Player("黑方")
         if white is None:
@@ -122,8 +129,9 @@ class Game:
 
         line = self.board.check_win(x, y)
         if line is not None:
-            self._finish(color, "连成六子", line)
-            return True, f"{self.color_name(color)}获胜！(连成六子)", line
+            reason = self._win_reason()
+            self._finish(color, reason, line)
+            return True, f"{self.color_name(color)}获胜！({reason})", line
 
         if self.board.is_full():
             self._finish(None, "棋盘已满", None)
@@ -146,7 +154,13 @@ class Game:
         self.step_remain = float(self.time_per_move)
 
     def _max_stones_for(self, color: int) -> int:
-        """计算某方在下一轮最多可下子数（黑方第 1 轮为 1，其余为 2）。"""
+        """计算某方在下一轮最多可下子数。
+
+        - 五子棋：每轮固定 1 子；
+        - 六子棋：黑方第 1 轮为 1，其余为 2。
+        """
+        if self.variant == "gomoku":
+            return 1
         if color == BLACK and self.round_no == 1:
             return 1
         return 2
@@ -175,47 +189,50 @@ class Game:
             print(f"  {player.name} 落子：{text}")
         return stones
 
-    def undo_round(self):
+    def undo_round(self, to_human: bool = False):
         """撤销最近一整轮（1~2 子），回到该轮落子方重新行棋。
 
+        to_human=True（人机模式悔棋）：连续撤销直到轮到人类棋手——一次
+        撤销完整的"AI 一步 + 我方一步"，而不是只撤 AI（最近一轮）那步。
+        双人/AI 互弈模式传 False，行为即"撤一轮"。
         若对局已终局，先解除终局状态再撤销（便于演示时回放）。
         返回撤销的子数（0 表示无可撤销）。
         """
-        if not self.moves_log:
-            return 0
-
+        total = 0
         self.finished = False
         self.winner = None
         self.win_line = None
         self.reason = ""
+        while self.moves_log:
+            last_round = self.moves_log[-1][3]
+            # 收集该轮全部落子（moves_log 已按时间先后排列，倒序收集同一轮号）
+            removed = [m for m in reversed(self.moves_log) if m[3] == last_round]
+            for _ in removed:
+                self.board.undo()
 
-        last_round = self.moves_log[-1][3]
-        # 收集该轮全部落子（moves_log 已按时间先后排列，倒序收集同一轮号）
-        removed = [m for m in reversed(self.moves_log) if m[3] == last_round]
-        for x, y, color, r in removed:
-            self.board.undo()
+            # 移除该轮的记录，保留其余
+            self.moves_log = [m for m in self.moves_log if m[3] != last_round]
 
-        # 移除该轮的记录，保留其余
-        self.moves_log = [m for m in self.moves_log if m[3] != last_round]
+            self.round_no = last_round
+            self.current = removed[-1][2]
+            self.stones_this_round = 0
+            self.max_stones = self._max_stones_for(self.current)
+            self.step_remain = float(self.time_per_move)
+            total += len(removed)
 
-        self.round_no = last_round
-        self.current = removed[-1][2]
-        self.stones_this_round = 0
-        self.max_stones = self._max_stones_for(self.current)
-        self.step_remain = float(self.time_per_move)
-        return len(removed)
+            if not to_human:
+                break
+            if self.current_player().kind == "human":
+                break
+            # 撤到的仍是 AI 轮（开局 AI 先行撤光时 current 停在 AI），
+            # 由 GUI 的 _schedule_ai_turn 重新调度。
+        return total
 
     def configure_timer(self, time_total: int, time_per_move: int):
         """配置双方总时间（秒）与每步限时（秒），<=0 表示不限。"""
         self.time_total = max(0, int(time_total))
         self.time_per_move = max(0, int(time_per_move))
         self.timer_enabled = self.time_total > 0 or self.time_per_move > 0
-
-    def reset_timer(self):
-        """新对局时调用：重置双方剩余时间与步时。"""
-        self.black_remain = float(self.time_total)
-        self.white_remain = float(self.time_total)
-        self.step_remain = float(self.time_per_move)
 
     def tick(self, dt: float):
         """扣减当前行棋方的时间。返回 None 或超时描述。
@@ -252,10 +269,6 @@ class Game:
         """当前行棋方的剩余总时间（秒）。"""
         return self.black_remain if self.current == BLACK else self.white_remain
 
-    def other_remain(self) -> float:
-        """对方剩余总时间（秒）。"""
-        return self.white_remain if self.current == BLACK else self.black_remain
-
     def time_str(self, seconds: float) -> str:
         """把秒数渲染为 mm:ss（总时间）或仅秒（步时较短时）。"""
         s = max(0, int(seconds + 0.5))
@@ -267,6 +280,12 @@ class Game:
         self.winner = winner
         self.reason = reason
         self.win_line = win_line
+
+    def _win_reason(self) -> str:
+        """获胜提示文案：随棋种（连六 / 连五）变化，供界面与兜底网统一引用。"""
+        if self.variant == "connect6":
+            return "连成六子"
+        return f"连成{self.board.win_count}子"
 
     def resign(self):
         """当前方认输（CLI / GUI 均可调用）。"""
@@ -296,6 +315,9 @@ class Game:
         else:
             result = "ABORT"
         return {
+            "variant": self.variant,
+            "size": self.board.size,
+            "win_count": self.board.win_count,
             "round_no": self.round_no,
             "black": self.players[BLACK].name,
             "black_kind": self.players[BLACK].kind,
@@ -305,43 +327,3 @@ class Game:
             "result": result,
             "reason": self.reason,
         }
-
-    def load_record(self, record: dict):
-        """从棋谱恢复一局（数据库回放用）。
-
-        说明：回放直接按记录铺棋盘，不经过轮次限制逻辑，
-        保证任意合法棋谱都能完整恢复。
-        """
-        self.board = Board()
-        self.moves_log = []
-        self.current = BLACK
-        self.round_no = 1
-        self.stones_this_round = 0
-        self.max_stones = 1
-        self.finished = False
-        self.winner = None
-        self.win_line = None
-        self.reason = ""
-
-        moves = record.get("moves", [])
-        for seq, (x, y, c) in enumerate(moves, start=1):
-            self.board.place(x, y, c)
-            self.moves_log.append((x, y, c, seq))
-
-        if moves:
-            self.current = moves[-1][2]
-            self.round_no = len(moves)
-            self.stones_this_round = 0
-            self.max_stones = self._max_stones_for(self.current)
-
-        if record.get("result") == "BLACK":
-            self.winner = BLACK
-            self.finished = True
-            return
-        if record.get("result") == "WHITE":
-            self.winner = WHITE
-            self.finished = True
-            return
-        if record.get("result") == "DRAW":
-            self.finished = True
-            self.reason = record.get("reason", "棋盘已满")

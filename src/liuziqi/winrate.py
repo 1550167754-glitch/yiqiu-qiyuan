@@ -37,13 +37,3 @@ def winrate_black(board: Board) -> float:
 def winrate_white(board: Board) -> float:
     """白方胜率。"""
     return 1.0 - winrate_black(board)
-
-
-def smooth(p_new: float, p_prev: float | None, alpha: float = 0.5) -> float:
-    """指数移动平均（EMA），抑制胜率逐手跳变。
-
-    alpha 越大越跟随新值；取 0.5 时新旧各半，曲线平滑且不滞后。
-    """
-    if p_prev is None:
-        return p_new
-    return alpha * p_new + (1.0 - alpha) * p_prev

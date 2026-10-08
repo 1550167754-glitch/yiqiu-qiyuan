@@ -1,0 +1,28 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>难点一 · 棋盘像被划了一道道伤</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>看上去是「材质不好」，实际是「多画了一层不该画的高频线段」</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", gap: 14 }}>
+  <Box style={{ flexDirection: "row", height: "100%", gap: 24, alignItems: "stretch" }}>
+    <Box style={{ flex: 1, height: "100%", background: "rgba(140,90,43,0.06)", border: "1px solid rgba(140,90,43,0.2)", borderRadius: 8, padding: "22px 24px", flexDirection: "column", gap: 12 }}>
+      <Text style={{ fontSize: 18, fontWeight: "bold", color: "rgba(42,33,24,0.5)", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>现象与根因</Text>
+      <Text style={{ fontSize: 17, lineHeight: 1.78, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>棋盘看起来像被划伤。根因不是材质贴图有问题，而是：网格线画完之后，代码又叠了一层约 110 条固定种子的短线段——长度在 0.6~2.4 格之间、方向含斜向。这些线段高频、杂乱、且每次生成的位置完全一样，于是读起来就像永久的刀痕，而不像自然的木纹。</Text>
+    </Box>
+    <Box style={{ flex: 1, height: "100%", background: "rgba(179,39,30,0.06)", border: "1px solid rgba(179,39,30,0.28)", borderRadius: 8, padding: "22px 24px", flexDirection: "column", gap: 12 }}>
+      <Text style={{ fontSize: 18, fontWeight: "bold", color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>解法</Text>
+      <Text style={{ fontSize: 17, lineHeight: 1.78, color: "rgba(42,33,24,0.84)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>删掉那段多余的绘制，改成 16 级纯净的竖向渐变。划痕立刻消失，棋盘恢复成一块干净木面。这说明问题不在「加得不够」，而在「加得过头」——多出来的那层高频特征，正是「假」的来源。</Text>
+    </Box>
+  </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>规律：视觉上的「假」，常常来自叠了一层真实材质本不具有的高频特征——解法是做减法。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>38 / 64</Text>
+  </Box>
+</Slide>

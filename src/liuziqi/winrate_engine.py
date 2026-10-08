@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-winrate2.py —— 六子棋胜率 6 阶段增量引擎（内存安全版）
+winrate_engine.py —— 六子棋胜率 6 阶段增量引擎（主实现，内存安全版）
+
+说明：本模块为胜率曲线的主计算引擎；winrate.py 是旧版静态 sigmoid 评估，
+仅作为本模块不可用时的降级兜底（见 gui.py 的 try/except 回退逻辑）。
 
 设计目标：UI 每落一子，曲线点先给"快速估计"，再被"异步蒙特卡洛"、"搜索校正"
 逐级刷新，数值越来越准，同时绝不撑爆内存（<=16G 环境也安全）。
@@ -25,7 +28,7 @@ from __future__ import annotations
 import math
 import random
 
-from .board import BLACK, WHITE, EMPTY, OPPOSITE, Board
+from .board import BLACK, EMPTY, OPPOSITE, Board
 from .ai import _Eval, WIN_SCORE
 
 _FLOOR = 0.02

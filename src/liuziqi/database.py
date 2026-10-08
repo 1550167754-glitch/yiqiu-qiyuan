@@ -202,22 +202,6 @@ class Database:
         except Exception:
             return []
 
-    def list_recent_games(self, limit: int = 10) -> list[dict]:
-        """最近对局列表（每局元信息，不含逐手）。"""
-        if not self.available:
-            return []
-        try:
-            with self.conn.cursor() as cur:
-                cur.execute(
-                    "SELECT id, black_name, white_name, result, reason,\n"
-                    "       move_count, started_at\n"
-                    "  FROM games ORDER BY id DESC LIMIT %s", (limit,))
-                cols = ("id", "black_name", "white_name", "result",
-                        "reason", "move_count", "started_at")
-                return [dict(zip(cols, row)) for row in cur.fetchall()]
-        except Exception:
-            return []
-
     def get_game_record(self, game_id: int) -> dict | None:
         """按 id 取某局完整棋谱（含 record JSON 与逐手）；无则返回 None。"""
         if not self.available:

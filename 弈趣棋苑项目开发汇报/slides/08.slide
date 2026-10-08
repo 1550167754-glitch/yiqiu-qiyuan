@@ -1,0 +1,58 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>技术底座：五条线，各管一摊</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>五条线各自独立、互不阻塞，任何一条出问题都不会拖垮界面主线程</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center", gap: 14 }}>
+  <Box style={{ flexDirection: "row", alignItems: "stretch", justifyContent: "center", gap: 8 }}>
+<Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>1. 渲染层</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>PIL 4× 超采样绘制，BOX 降采样，预渲染精灵运行期零重绘</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>2. 音频层</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>MCI 独立线程，双轨队列，常驻 alias，锁泄漏自愈</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>3. AI 层</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>AlphaBeta + VCF/VCT 算杀，象棋接皮卡鱼 NNUE</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>4. 数据层</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>PostgreSQL 自动存档，状态栏 + Toast 双反馈</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>5. 分发层</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>PyInstaller 打包 myapp.exe，venv 隔离依赖</Text>
+      </Box>
+  </Box>
+    <Box style={{ width: "100%", flexDirection: "column", gap: 8 }}>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 15, lineHeight: 1.64, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>渲染与音频都做了异步或预渲染，主线程只负责画和响应点击。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 15, lineHeight: 1.64, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>AI 走子进程 / 工作线程，界面在下棋思考期间仍然流畅可交互。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 15, lineHeight: 1.64, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>数据层失败不阻断对局，只降级为提示，不让玩家卡在存档上。</Text>
+    </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>底座设计的唯一目标：把「不可控的外部调用」从 UI 线程和全局锁上剥离出去。</Text>
+  </Box>
+    </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>08 / 64</Text>
+  </Box>
+</Slide>

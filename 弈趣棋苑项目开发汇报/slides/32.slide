@@ -1,0 +1,21 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>迭代三：PostgreSQL 一键配置</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>第三轮把「环境配置」从用户负担变成了程序自己的责任</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>数据库是很多人上手的门槛：要装服务、建库、配连接串，任何一步出错都会让存档功能失效。而存档本身又不是核心玩法，卡在这里非常不划算。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>这一轮写了一个安装引导脚本加启动时的环境检测：脚本负责把该装的装好，检测负责判断连不连得上。把「自己配连接串」降级成「点一下就行」，把可能出错的地方全部前置到启动阶段。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>配套加了状态栏与 Toast 双反馈：存档成功、失败、降级三种情况都看得见，不会出现「以为存了其实没存」。</Text>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>产品化的重要一课：把用户可能踩的坑，用一个脚本提前填平。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>32 / 64</Text>
+  </Box>
+</Slide>

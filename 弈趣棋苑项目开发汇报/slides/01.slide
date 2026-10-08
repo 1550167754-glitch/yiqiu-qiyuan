@@ -1,0 +1,30 @@
+<Slide style={{ width: 1280, height: 720, position: "relative", padding: "0px", background: "#2A2118", overflow: "hidden" }}>
+  <Image src="assets/wood_dark.jpg" style={{ position: "absolute", top: 0, left: 0, width: 1280, height: 720, objectFit: "cover" }} />
+  <Box style={{ position: "absolute", top: 0, left: 0, width: 1280, height: 720, background: "linear-gradient(90deg, rgba(42,33,24,0.95) 0%, rgba(42,33,24,0.80) 42%, rgba(42,33,24,0.34) 72%, rgba(42,33,24,0.10) 100%)" }} />
+  <svg width="360" height="360" viewBox="0 0 360 360" style={{ position: "absolute", right: 54, bottom: 46 }} opacity="0.20">
+    <g stroke="#F5E3BE" strokeWidth="1" fill="none">
+      <line x1="40" y1="0" x2="40" y2="360" /><line x1="120" y1="0" x2="120" y2="360" /><line x1="200" y1="0" x2="200" y2="360" /><line x1="280" y1="0" x2="280" y2="360" /><line x1="360" y1="0" x2="360" y2="360" />
+      <line x1="0" y1="40" x2="360" y2="40" /><line x1="0" y1="120" x2="360" y2="120" /><line x1="0" y1="200" x2="360" y2="200" /><line x1="0" y1="280" x2="360" y2="280" /><line x1="0" y1="360" x2="360" y2="360" />
+    </g>
+    <circle cx="200" cy="200" r="13" fill="#B3271E" opacity="0.85" /><circle cx="120" cy="120" r="13" fill="#F5E3BE" opacity="0.75" /><circle cx="280" cy="280" r="13" fill="#F5E3BE" opacity="0.55" />
+  </svg>
+  <Box style={{ position: "relative", zIndex: 2, width: 1280, height: 720, padding: "0px 0px 0px 96px", flexDirection: "column", justifyContent: "center" }}>
+    <Box style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 26 }}>
+      <Box style={{ width: 46, height: 3, background: "#B3271E" }} />
+      <Text style={{ fontSize: 19, color: "rgba(245,227,190,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 3 }}>个人独立开发 · 项目开发汇报</Text>
+    </Box>
+    <Text style={{ fontSize: 74, fontWeight: "bold", lineHeight: 1.15, color: "#F5E3BE", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", letterSpacing: 8 }}>弈趣棋苑</Text>
+    <Text style={{ fontSize: 24, color: "rgba(245,227,190,0.86)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 2, marginTop: 20 }}>Connect6 · Gomoku · 中国象棋</Text>
+    <Text style={{ fontSize: 21, lineHeight: 1.7, color: "rgba(245,227,190,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 34, width: 640 }}>
+      一份从「能跑」走到「可交付」的棋类合集开发纪实——把每一个决定拆开讲清楚：为什么这么画、为什么这么响、为什么这么搜。</Text>
+  </Box>
+  <Box style={{ position: "absolute", left: 96, bottom: 54, flexDirection: "row", alignItems: "center", gap: 16 }}>
+    <Box style={{ width: 46, height: 46, borderRadius: 6, background: "#B3271E", justifyContent: "center", alignItems: "center" }}>
+      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#F5E3BE", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>弈</Text>
+    </Box>
+    <Box style={{ flexDirection: "column", gap: 4 }}>
+      <Text style={{ fontSize: 16, color: "rgba(245,227,190,0.80)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+      <Text style={{ fontSize: 14, color: "rgba(245,227,190,0.48)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>个人独立开发 · 20+ 模块 · 64 页</Text>
+    </Box>
+  </Box>
+</Slide>

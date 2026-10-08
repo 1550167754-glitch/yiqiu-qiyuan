@@ -1,0 +1,22 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>演示四 · 象棋人机对战</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>演示重点：外部神经网络引擎的接入、动画与胜率的联动</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ flexDirection: "row", width: "100%", height: "100%", gap: 36, overflow: "hidden" }}>        <Box style={{ flex: 1, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>人落子之后，worker 线程调皮卡鱼计算 best_move，返回后播放完整的抬棋 / 移动 / 落地动画。整个过程界面保持可交互，不卡顿。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>引擎返回的 score 经 Elo 公式换算成红黑双方胜率并实时精化。当一方被将军时，全盘压暗并弹出红环脉冲提示——状态一眼可见。</Text>
+  </Box>
+          <Box style={{ flexDirection: "column", gap: 10 }}>
+      <Image src="assets/shot_xiangqi.png" style={{ width: 410, height: 210, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(140,90,43,0.30)" }} />
+      <Text style={{ fontSize: 15, color: "#8C5A2B", fontWeight: "bold", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>④ 象棋人机：皮卡鱼 NNUE 应手 + 书法字</Text>
+    </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>47 / 64</Text>
+  </Box>
+</Slide>

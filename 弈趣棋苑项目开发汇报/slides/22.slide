@@ -1,0 +1,47 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>原理 · AI 引擎：搜索、评估与剪枝</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>核心不是「搜得全」，而是「把明显不行的分支尽早砍掉」</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column" }}>
+  <Box style={{ flexDirection: "row", height: "100%", gap: 30, alignItems: "center" }}>
+    <Box style={{ width: 520, flexDirection: "column", justifyContent: "center", gap: 10, alignItems: "center" }}>
+    <svg width="420" height="290" viewBox="0 0 420 290" style={{ background: "rgba(140,90,43,0.06)", borderRadius: 10, maxWidth: "100%", height: "auto" }}>
+      <circle cx="210" cy="40" r="24" fill="#8C5A2B"/><text x="210" y="47" font-size="14" fill="#F5E3BE" text-anchor="middle" font-family="sans-serif">根</text>
+      <circle cx="105" cy="135" r="21" fill="#2A2118"/><circle cx="315" cy="135" r="21" fill="#2A2118"/>
+      <text x="105" y="141" font-size="12" fill="#F5E3BE" text-anchor="middle" font-family="sans-serif">MAX</text>
+      <text x="315" y="141" font-size="12" fill="#F5E3BE" text-anchor="middle" font-family="sans-serif">MAX</text>
+      <circle cx="55" cy="235" r="18" fill="#B3271E"/><circle cx="155" cy="235" r="18" fill="#B3271E"/><circle cx="265" cy="235" r="18" fill="#B3271E"/><circle cx="365" cy="235" r="18" fill="#B3271E"/>
+      <line x1="210" y1="64" x2="105" y2="114" stroke="#8C5A2B" stroke-width="2"/><line x1="210" y1="64" x2="315" y2="114" stroke="#8C5A2B" stroke-width="2"/>
+      <line x1="105" y1="156" x2="55" y2="217" stroke="#B3271E" stroke-width="2"/><line x1="105" y1="156" x2="155" y2="217" stroke="#B3271E" stroke-width="2"/>
+      <line x1="315" y1="156" x2="265" y2="217" stroke="#B3271E" stroke-width="2"/><line x1="315" y1="156" x2="365" y2="217" stroke="#B3271E" stroke-width="2"/>
+    </svg>
+      <Text style={{ fontSize: 14, lineHeight: 1.4, color: "rgba(42,33,24,0.6)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>Negamax + α/β 剪枝：搜索宽度从 b^d 降到约 b^(d/2)</Text>
+    </Box>
+    <Box style={{ flex: 1, flexDirection: "column", justifyContent: "center", gap: 6 }}>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>Negamax：己方取最大、对方取最小，用同一套递归写双方。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>α/β 剪枝：一旦证明某分支不可能更好，立即整枝放弃。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>迭代加深：先浅后深，保证时限内总能给出「最深的已完成层」。</Text>
+    </Box>
+    </Box>
+  </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>效果：同样的时限内能多看将近一倍深度——而深度直接决定棋力。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>22 / 64</Text>
+  </Box>
+</Slide>

@@ -1,0 +1,18 @@
+<Slide style={{ width: 1280, height: 720, position: "relative", padding: "0px", background: "#2A2118", overflow: "hidden" }}>
+  <Image src="assets/wood_dark_flip.jpg" style={{ position: "absolute", top: 0, left: 0, width: 1280, height: 720, objectFit: "cover" }} />
+  <Box style={{ position: "absolute", top: 0, left: 0, width: 1280, height: 720, background: "linear-gradient(270deg, rgba(42,33,24,0.95) 0%, rgba(42,33,24,0.78) 46%, rgba(42,33,24,0.22) 76%, rgba(42,33,24,0.08) 100%)" }} />
+  <Box style={{ position: "absolute", left: 96, top: 0, height: 720, flexDirection: "column", justifyContent: "center", gap: 26 }}>
+    <Box style={{ width: 46, height: 3, background: "#B3271E" }} />
+    <Text style={{ fontSize: 60, fontWeight: "bold", lineHeight: 1.25, color: "#F5E3BE", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>棋盘上每一步都可回退，<br />工程上每一个决定都要留下依据。</Text>
+    <Text style={{ fontSize: 22, color: "rgba(245,227,190,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 2 }}>谢 谢 观 看</Text>
+  </Box>
+  <Box style={{ position: "absolute", right: 70, bottom: 54, flexDirection: "row", alignItems: "center", gap: 16 }}>
+    <Box style={{ flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
+      <Text style={{ fontSize: 16, color: "rgba(245,227,190,0.80)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+      <Text style={{ fontSize: 14, color: "rgba(245,227,190,0.48)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>个人独立开发 · 2026</Text>
+    </Box>
+    <Box style={{ width: 46, height: 46, borderRadius: 6, background: "#B3271E", justifyContent: "center", alignItems: "center" }}>
+      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#F5E3BE", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>弈</Text>
+    </Box>
+  </Box>
+</Slide>

@@ -33,16 +33,6 @@ def _shade(color: str, factor: float) -> str:
     return f"#{r:02X}{g:02X}{b:02X}"
 
 
-def _rr(r, w, h, pad=0, dy=0):
-    x0 = pad; y0 = pad + dy; x1 = w - pad; y1 = h - pad + dy
-    if x1 - x0 < 2 * r:
-        r = max(0.0, (x1 - x0) / 2)
-    if y1 - y0 < 2 * r:
-        r = max(0.0, (y1 - y0) / 2)
-    return [x0 + r, y0, x1 - r, y0, x1, y0 + r, x1, y1 - r,
-            x1 - r, y1, x0 + r, y1, x0, y1 - r, x0, y0 + r]
-
-
 class CanvasButton(tk.Canvas):
     """棋谱回放窗口自绘按钮：与游戏主程序一致的立体光影风格
     （投影 + 渐变 + 顶部高光 + 悬停光晕 + 按下内陷）。"""
@@ -129,7 +119,11 @@ class ReplayWindow(tk.Toplevel):
         self.record = record
         self.theme = get_theme("经典原木")
 
-        self.b = Board()
+        # 棋种随棋谱携带（旧棋谱无字段时回退为六子棋 19×19/连六）
+        self._bsize = int(record.get("size", 19) or 19)
+        self._bwin = int(record.get("win_count", 6) or 6)
+
+        self.b = Board(self._bsize, self._bwin)
         self.step_i = 0
         self.playing = False
         self.speed = DEFAULT_SPEED
@@ -190,7 +184,7 @@ class ReplayWindow(tk.Toplevel):
         if self.playing:
             if self.step_i >= len(self.moves):
                 self.step_i = 0
-                self.b = Board()
+                self.b = Board(self._bsize, self._bwin)
             self._schedule()
         else:
             self._cancel_job()
@@ -225,7 +219,7 @@ class ReplayWindow(tk.Toplevel):
         self.playing = False
         self._cancel_job()
         self.btn_play.set_text("▶ 自动播放")
-        self.b = Board()
+        self.b = Board(self._bsize, self._bwin)
         for m in self.moves[:idx]:
             self.b.place(m[0], m[1], m[2])
         self.step_i = idx
@@ -243,7 +237,7 @@ class ReplayWindow(tk.Toplevel):
         if self.step_i <= 0:
             return
         self.step_i -= 1
-        self.b = Board()
+        self.b = Board(self._bsize, self._bwin)
         for m in self.moves[:self.step_i]:
             self.b.place(m[0], m[1], m[2])
 

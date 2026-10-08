@@ -19,21 +19,19 @@ from __future__ import annotations
 
 import os
 import sys
-import math
 import queue
 import threading
 import time
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import messagebox, ttk
 
-from .board import Board, BLACK, WHITE, EMPTY, COLOR_NAMES
+from .board import Board, BLACK, WHITE, COLOR_NAMES
 from .game import Game, Player, MODE_HUMAN_AI, MODE_HUMAN_HUMAN, MODE_AI_AI
 from .sounds import SoundManager
-from .llm_ai import LLMAI
 from .theme_boards import THEME_NAMES, get_theme, blend
 from .fonts import FontManager, FALLBACK_FAMILY
 from .music import MusicPlayer, MODE_LOOP, MODE_SINGLE, MODE_SHUFFLE, MODE_NAMES
-from .paths import resource, app_base, logs_dir, data_dir
+from .paths import resource, logs_dir, data_dir
 from .roundrect import draw_3d_button, rounded_rect_points
 from . import stonefx
 from . import titlefx
@@ -54,9 +52,9 @@ try:
 except Exception:
     winrate_black = winrate_white = None
 
-# 6 阶段胜率引擎（新）；失败则回退到上面的 winrate.py 静态评估
+# 6 阶段胜率引擎（主实现，见 winrate_engine.py）；失败则回退到 winrate.py 静态评估
 try:
-    from . import winrate2
+    from . import winrate_engine as winrate2
     _HAVE_WR2 = True
 except Exception:
     winrate2 = None
@@ -93,7 +91,7 @@ BOARD_MARGIN = 34  # 棋盘在画布内的外边距：四周留白(画布到棋�
 
 # ---------- 启动页设计尺寸（scale=1.0 时的垂直预算，单位 px） ----------
 # 布局按「设计总高」等比缩放并垂直居中：窗口越大越大气，窗口小则整体收缩不溢出。
-APP_SUBTITLE = "六子棋 · 五子棋 · 经典对弈"
+APP_SUBTITLE = "六子棋 · 五子棋 · 中国象棋 · 经典对弈"
 _MENU_K_TITLE = 176.0   # 艺术字标题块视觉高度（主标题 + 副标题）
 _MENU_K_DIV = 26.0      # 标题块 → 分隔线
 _MENU_K_HEAD = 44.0     # 分区头 → 其下按钮的距离（含分区头本身的占位）
@@ -156,20 +154,6 @@ def _enable_dpi_awareness():
             pass
     except Exception:
         pass
-
-
-# ---------------------------------------------------------------
-#  光影按钮
-# ---------------------------------------------------------------
-def _rr_pts(r, w, h, pad=0, dy=0):
-    """圆角矩形（多边形近似）顶点列表。pad=整体内缩，dy=整体下移。"""
-    x0 = pad; y0 = pad + dy; x1 = w - pad; y1 = h - pad + dy
-    if x1 - x0 < 2 * r:
-        r = max(0.0, (x1 - x0) / 2)
-    if y1 - y0 < 2 * r:
-        r = max(0.0, (y1 - y0) / 2)
-    return [x0 + r, y0, x1 - r, y0, x1, y0 + r, x1, y1 - r,
-            x1 - r, y1, x0 + r, y1, x0, y1 - r, x0, y0 + r]
 
 
 class GlowButton(tk.Canvas):
@@ -435,13 +419,6 @@ class MediaButton(tk.Canvas):
         except Exception:
             self._hover = False
         self._draw()
-
-    @staticmethod
-    def _rr_points(r, w, h, pad=0, dy=0):
-        """生成圆角矩形（多边形近似）顶点列表，pad 为整体内缩量，dy 为整体下移。"""
-        x0 = pad; y0 = pad + dy; x1 = w - pad; y1 = h - pad + dy
-        return [x0 + r, y0, x1 - r, y0, x1, y0 + r, x1, y1 - r,
-                x1 - r, y1, x0 + r, y1, x0, y1 - r, x0, y0 + r]
 
     def _draw(self):
         if not self._alive():
@@ -937,6 +914,10 @@ class Connect6GUI(tk.Tk):
             self.menu_canvas, "五子棋", command=lambda: self._on_new_game_click(variant="gomoku"),
             width=214, height=70, bg=C_ACCENT, fg="#1F2430",
             font=(FALLBACK_FAMILY, 17, "bold"))
+        self.btn_xiangqi = GlowButton(
+            self.menu_canvas, "中国象棋", command=self._on_xiangqi_click,
+            width=214, height=70, bg=C_ACCENT, fg="#1F2430",
+            font=(FALLBACK_FAMILY, 17, "bold"))
         self.btn_stats = GlowButton(
             self.menu_canvas, "战绩查询", command=self._show_stats,
             width=180, height=50, bg="#3A4256", fg=C_TEXT,
@@ -1219,25 +1200,26 @@ class Connect6GUI(tk.Tk):
                       fill=C_PANEL_BORDER, width=1)
         self._draw_diamond(c, w / 2, div_y, max(3, int(4 * k)), C_ACCENT_DARK)
 
-        # ---------- 「选择游戏」分区：六子棋 / 五子棋 并排 ----------
+        # ---------- 「选择游戏」分区：六子棋 / 五子棋 / 中国象棋 三栏 ----------
         cur += _MENU_K_HEAD * k
         self._ornament_header(c, w / 2, cur - _MENU_K_HEAD * k * 0.50,
                               "选择游戏", scale=k)
         gh = _MENU_K_B1 * k
-        ggap = max(14, 26 * k)
-        gw = min(216 * k, (w - 80 - ggap) / 2.0)
-        gx = w / 2 - (gw * 2 + ggap) / 2.0
-        self._sync_button(self.btn_start, gx, cur, gw, gh, font_size=17 * k)
-        self._sync_button(self.btn_gomoku, gx + gw + ggap, cur, gw, gh,
-                          font_size=17 * k)
+        ggap = max(12, 20 * k)
+        gw = min(196 * k, (w - 80 - 2 * ggap) / 3.0)
+        gx = w / 2 - (gw * 3 + ggap * 2) / 2.0
+        game_btns = (self.btn_start, self.btn_gomoku, self.btn_xiangqi)
+        caps = ("19×19 · 连六", "15×15 · 连五", "9×10 · 中国象棋")
+        for i, b in enumerate(game_btns):
+            self._sync_button(b, gx + i * (gw + ggap), cur, gw, gh,
+                              font_size=16 * k)
         cur += _MENU_K_B1 * k
         # 卡片说明文字（区分棋种，按钮本体保持同款）
         cap_y = cur + _MENU_K_CAP * k * 0.55
         cfont = (FALLBACK_FAMILY, max(9, int(12 * k)))
-        c.create_text(gx + gw / 2, cap_y, text="19×19 · 连六制胜",
-                      fill=C_TEXT_DIM, font=cfont)
-        c.create_text(gx + gw + ggap + gw / 2, cap_y,
-                      text="15×15 · 连五制胜", fill=C_TEXT_DIM, font=cfont)
+        for i, cap in enumerate(caps):
+            c.create_text(gx + i * (gw + ggap) + gw / 2, cap_y, text=cap,
+                          fill=C_TEXT_DIM, font=cfont)
         cur += _MENU_K_CAP * k
 
         # ---------- 「更多功能」分区：战绩 / 规则 / 关于 并排 ----------
@@ -1547,6 +1529,102 @@ class Connect6GUI(tk.Tk):
                  lambda e, v=var: cb(v.get()))
         setattr(self, f"_var_{label}", var)
         setattr(self, f"_combo_{label}", cbo)
+
+    # ---- 中国象棋入口 ----
+    def _on_xiangqi_click(self):
+        """从启动器菜单打开中国象棋：先弹「新建对局」（模式/难度/引擎说明），
+        交互与视觉与五子棋/六子棋的新建对局窗保持一致。"""
+        dlg = tk.Toplevel(self)
+        dlg.title("新建对局 · 中国象棋")
+        dlg.configure(bg=C_MAIN)
+        dlg.resizable(False, False)
+        try:
+            dlg.transient(self)
+        except Exception:
+            pass
+        self._center_window(dlg, 440, 470)
+
+        tk.Label(dlg, text="对局模式", bg=C_MAIN, fg=C_TEXT_DIM,
+                 font=(FALLBACK_FAMILY, 11)).pack(anchor="w", padx=20,
+                                                   pady=(16, 2))
+        # 与象棋窗口侧栏的 3 种模式一一对应
+        modes = [("人机对战（AI 执黑）", "pve"), ("双人对弈", "pvp"),
+                 ("机机观战 · 皮卡鱼互弈", "aia")]
+        mode_var = tk.StringVar(value=modes[0][0])   # 默认值须与某个选项文本一致
+        for label, m in modes:
+            tk.Radiobutton(dlg, text=label, value=label, variable=mode_var,
+                           bg=C_MAIN, fg=C_TEXT, selectcolor=C_MAIN_DARK,
+                           activebackground=C_MAIN, activeforeground=C_TEXT,
+                           font=(FALLBACK_FAMILY, 11)).pack(anchor="w", padx=34)
+
+        tk.Label(dlg, text="AI 难度（皮卡鱼 NNUE）", bg=C_MAIN, fg=C_TEXT_DIM,
+                 font=(FALLBACK_FAMILY, 11)).pack(anchor="w", padx=20,
+                                                   pady=(12, 2))
+        diff_var = tk.StringVar(value={v: k for k, v in DIFFICULTY_ORDER}
+                                .get(getattr(self, "difficulty", "medium"),
+                                     "中等"))
+        diff_row = tk.Frame(dlg, bg=C_MAIN)
+        diff_row.pack(anchor="w", padx=34)
+        for label, _key in DIFFICULTY_ORDER:
+            tk.Radiobutton(diff_row, text=label, value=label, variable=diff_var,
+                           bg=C_MAIN, fg=C_TEXT, selectcolor=C_MAIN_DARK,
+                           activebackground=C_MAIN, activeforeground=C_TEXT,
+                           font=(FALLBACK_FAMILY, 11)).pack(side="left",
+                                                            padx=(0, 10))
+        tip = ("象棋「困难」为 Pikafish 深度推理档：\n"
+               "Skill Level 20 + 搜索深度 14，NNUE 权重评估；\n"
+               "机机观战固定使用「中等」档以保证观战节奏。")
+        tk.Label(dlg, text=tip, bg=C_MAIN, fg=C_TEXT_DIM, justify="left",
+                 font=(FALLBACK_FAMILY, 9)).pack(anchor="w", padx=34,
+                                                  pady=(6, 0))
+
+        def _ok():
+            mode = {label: m for label, m in modes}[mode_var.get()]
+            difficulty = {k: v for k, v in DIFFICULTY_ORDER}.get(
+                diff_var.get(), "medium")
+            try:
+                self.difficulty = difficulty
+            except Exception:
+                pass
+            dlg.destroy()
+            self._launch_xiangqi(mode, difficulty)
+
+        GlowButton(dlg, "开始", command=_ok, width=220, height=48,
+                   bg=C_ACCENT, fg="#1F2430",
+                   font=(FALLBACK_FAMILY, 15, "bold")).pack(pady=(16, 8))
+        GlowButton(dlg, "取消", command=dlg.destroy, width=220, height=40,
+                   bg=C_CANCEL, fg=C_TEXT,
+                   font=(FALLBACK_FAMILY, 13, "bold")).pack(pady=(0, 14))
+
+        # 按内容实测尺寸并夹紧到屏幕内，保证「开始/取消」始终可见
+        try:
+            dlg.update_idletasks()
+            sw, sh = dlg.winfo_screenwidth(), dlg.winfo_screenheight()
+            need_w = max(440, int(dlg.winfo_reqwidth()) + 8)
+            need_h = max(470, int(dlg.winfo_reqheight()) + 8)
+            need_w = max(320, min(need_w, sw - 40))
+            need_h = max(320, min(need_h, sh - 80))
+            dlg.geometry("")
+            self._center_window(dlg, need_w, need_h)
+        except Exception:
+            pass
+
+    def _launch_xiangqi(self, mode="pve", difficulty="medium"):
+        """真正打开象棋窗口（模块异常时明确提示，不致命）。"""
+        try:
+            from .xiangqi_gui import XiangqiApp
+            XiangqiApp(self, mode=mode, difficulty=difficulty)
+        except Exception as exc:  # 模块异常不致命，给出提示
+            try:
+                from .styled_dialog import OrnateDialog
+                dlg = OrnateDialog(self, title="无法启动象棋", width=420, height=240)
+                dlg.open()
+                tk.Label(dlg.body, text=f"象棋模块加载失败：\n{exc}",
+                         bg=dlg._body_bg, fg=C_TEXT, justify="left",
+                         font=(FALLBACK_FAMILY, 12)).pack(padx=20, pady=30)
+            except Exception:
+                import tkinter.messagebox as mb
+                mb.showerror("无法启动象棋", f"象棋模块加载失败：{exc}")
 
     # ---- 对局创建 ----
     def _on_new_game_click(self, variant: str = "connect6"):
@@ -2989,8 +3067,10 @@ class Connect6GUI(tk.Tk):
     def _on_undo(self):
         if self.game is None or self.game.finished:
             return
-        # 撤销到上个人类可控的局面：撤销整轮
-        self.game.undo_round()
+        # 人机模式：一次撤销整轮（AI 一步 + 我方一步），回到我方重新行棋；
+        # 双人 / AI 互弈：撤一轮。
+        kinds = {p.kind for p in self.game.players.values()}
+        self.game.undo_round(to_human=("human" in kinds and "ai" in kinds))
         self.selected = []
         self.thinking = False
         self.sound.play("click")
@@ -3000,6 +3080,8 @@ class Connect6GUI(tk.Tk):
         # 悔棋后曲线缩水到当前实际手数（由 _sync_winrate 在下次落子时增量补齐）
         self._wr_y = self._wr_y[: self.game.board.move_count]
         self._draw_winrate()
+        # 撤到的可能是 AI 轮（如开局 AI 先行被撤光）——重新调度，人类回合自动跳过
+        self._schedule_ai_turn()
 
     def _on_pass(self):
         """人类只下 1 子后结束本回合（Connect6 允许每轮 1~2 子）。"""
@@ -3245,11 +3327,15 @@ class Connect6GUI(tk.Tk):
         dlg.bind("<Escape>", lambda e: dlg.destroy())
 
     def _poll_music(self):
-        """主线程音乐 UI 轮询（每 ~0.9s 一次）。
+        """主线程音乐 UI 轮询（每 ~0.9s 一次）+ 音效/音频自愈探针。
 
         音频引擎（music 引擎线程）负责全部 MCI 命令与曲目自动接续；本方法
         只读取引擎缓存的状态刷新按钮图标与曲名，**绝不发送任何 MCI 命令**。
         这是"音频设备异常不冻结界面"的关键——UI 与音频故障彻底隔离。
+
+        自愈探针：若上一次音效投递后长时间没有成功消费（设备被独占/驱动
+        异常导致 mciSendStringW 永久阻塞、工作线程卡死并持有全局锁），
+        则重建 winmm 锁，让音效与背景音恢复——对应"下到一半没音效"。
         """
         try:
             if self.music:
@@ -3258,6 +3344,7 @@ class Connect6GUI(tk.Tk):
                 # 图标语义：真正在播显示 ⏸（点击暂停）；暂停/停止显示 ▶（点击播放）
                 real_playing = bool(st["playing"] and st["mode"] == "playing")
                 self._sync_music_play_icons(real_playing)
+            self._sfx_health_check()
         except Exception:
             pass
         finally:
@@ -3265,6 +3352,37 @@ class Connect6GUI(tk.Tk):
                 self._music_job = self.after(900, self._poll_music)
             except Exception:
                 pass
+
+    def _sfx_health_check(self):
+        """音效健康探针：队列积压且长期不降 → 判定工作线程卡死并自愈。"""
+        sm = getattr(self, "sound", None)
+        if sm is None:
+            return
+        try:
+            from . import sounds as _snd
+            q = _snd._SFX_QUEUE
+            if q is None:
+                return
+            # 只有"有积压 + 长时间不消费"才恢复，正常播放期间 qsize 恒为 0
+            if q.qsize() < _snd._SFX_QUEUE_MAX - 2:
+                self._sfx_stall_since = 0
+                return
+            now = int(time.time() * 10)
+            if not getattr(self, "_sfx_stall_since", 0):
+                self._sfx_stall_since = now
+                return
+            if now - self._sfx_stall_since < 30:      # 持续 3 秒积压才动手
+                return
+            self._sfx_stall_since = 0
+            sm.recover()
+            # 丢掉积压的旧任务，避免恢复瞬间一串爆音
+            while q.qsize():
+                try:
+                    q.get_nowait()
+                except Exception:
+                    break
+        except Exception:
+            pass
 
     # ---- 启动 PostgreSQL 检测与游戏内询问 ----
     def _maybe_pg_prompt(self):
@@ -3465,7 +3583,7 @@ class Connect6GUI(tk.Tk):
 
     def _open_tutorial(self):
         text = (f"{APP_NAME} 规则说明\n\n"
-                "本程序收录两种经典连珠棋，规则与玩法如下：\n\n"
+                "本程序收录三种经典棋，规则与玩法如下：\n\n"
                 "【六子棋 Connect6】\n"
                 "· 19×19 棋盘，黑先，第一手下 1 子；\n"
                 "· 之后双方每轮下 1 或 2 子；\n"
@@ -3475,17 +3593,25 @@ class Connect6GUI(tk.Tk):
                 "· 横、竖、斜任一方向连成 5 子即获胜；\n"
                 "· AI 难度分简单 / 中等 / 困难三档，\n"
                 "  「困难」启用完整算杀引擎。\n\n"
-                "落子操作：先在棋盘点击选位（虚线预览），\n"
-                "再点右侧「确认落子」正式落子。")
+                "【中国象棋 Xiangqi】\n"
+                "· 9×10 棋盘，红先，双方轮流行棋；\n"
+                "· 车走直线、马走日（蹩腿）、象走田（塞眼）、\n"
+                "  士走斜、将走宫、炮隔子吃、兵过河可平移；\n"
+                "· 将帅不可照面；将死或困毙（无着可走）即负；\n"
+                "· 本版为人人对战，后续版本将加入 AI。\n\n"
+                "落子操作：六子棋 / 五子棋先在棋盘点击选位\n"
+                "（虚线预览），再点右侧「确认落子」正式落子；\n"
+                "象棋则先点选己方棋子，再点高亮处落子。")
         self._info_dialog("规则说明", text, subtitle=APP_NAME,
                           icon="info", width=540, height=480)
 
     def _open_about(self):
         self._info_dialog(
             "关于",
-            f"{APP_NAME}\n六子棋 · 五子棋 经典对弈\n\n"
-            "本地 AI：Alpha-Beta 剪枝 + 置换表 + 迭代加深 + 算杀(VCF/VCT)",
-            subtitle=APP_NAME, icon="info", width=470, height=320)
+            f"{APP_NAME}\n六子棋 · 五子棋 · 中国象棋 经典对弈\n\n"
+            "连珠棋 AI：Alpha-Beta 剪枝 + 置换表 + 迭代加深 + 算杀(VCF/VCT)\n"
+            "中国象棋：完整规则引擎（人人对战）",
+            subtitle=APP_NAME, icon="info", width=520, height=340)
 
     # ---- 关闭 / 工具 ----
     def _center_window(self, wnd, w, h):

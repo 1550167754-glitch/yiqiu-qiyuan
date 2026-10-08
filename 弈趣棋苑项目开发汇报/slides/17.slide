@@ -1,0 +1,28 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>原理 · 为什么不用 LANCZOS</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>同一个降采样步骤，换一种核，画质问题的性质就完全不同</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", gap: 14 }}>
+  <Box style={{ flexDirection: "row", height: "100%", gap: 24, alignItems: "stretch" }}>
+    <Box style={{ flex: 1, height: "100%", background: "rgba(140,90,43,0.06)", border: "1px solid rgba(140,90,43,0.2)", borderRadius: 8, padding: "22px 24px", flexDirection: "column", gap: 12 }}>
+      <Text style={{ fontSize: 18, fontWeight: "bold", color: "rgba(42,33,24,0.5)", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>之前：LANCZOS 降采样</Text>
+      <Text style={{ fontSize: 17, lineHeight: 1.78, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>LANCZOS 的重采样核带负瓣，在「描边 ↔ 透明」这类高对比边界会过冲，产生彩色振铃：边缘泛出一圈青紫色毛边。小尺寸看不清，一旦棋盘铺到全屏大格子就非常明显，棋面看起来发虚发彩。这是它数学性质决定的，不是参数没调好。</Text>
+    </Box>
+    <Box style={{ flex: 1, height: "100%", background: "rgba(179,39,30,0.06)", border: "1px solid rgba(179,39,30,0.28)", borderRadius: 8, padding: "22px 24px", flexDirection: "column", gap: 12 }}>
+      <Text style={{ fontSize: 18, fontWeight: "bold", color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>现在：BOX + UnsharpMask</Text>
+      <Text style={{ fontSize: 17, lineHeight: 1.78, color: "rgba(42,33,24,0.84)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>BOX（面积平均）核全为正、无负瓣，从根上不产生振铃，边界干净。代价是会略软，于是补一段 UnsharpMask(radius 1.1 / 60% / 阈值 2) 找回锐度。降采样前还要先给圆外透明区填上底色，否则卷积会把黑色卷进边缘，形成断续黑斑。</Text>
+    </Box>
+  </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>选择依据：负瓣是振铃的必要条件，去掉负瓣就根治了彩边——比事后加滤波补丁更可靠。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>17 / 64</Text>
+  </Box>
+</Slide>

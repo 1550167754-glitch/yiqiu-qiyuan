@@ -1,0 +1,23 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>氛围系统：音乐、音效、主题各归各</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>三个子系统各管一摊：音乐管播放、音效管延迟、主题管外观</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ flexDirection: "row", width: "100%", height: "100%", gap: 36, overflow: "hidden" }}>          <Box style={{ flexDirection: "column", gap: 10 }}>
+      <Image src="assets/shot_launcher.png" style={{ width: 410, height: 200, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(140,90,43,0.30)" }} />
+      <Text style={{ fontSize: 15, color: "#8C5A2B", fontWeight: "bold", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>启动器：音乐入口与主题切换都在这里</Text>
+    </Box>
+        <Box style={{ flex: 1, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>音乐有两个入口：启动页和对局侧栏都能点歌，点完高亮当前曲。两处背后是同一个 MusicPlayer 实例，绝不自建第二个 MCI 引擎——否则两条播放链一起抢设备，必然出问题。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>落子音走双轨：mp3 走异步快轨、wav 走同步慢轨，按扩展名自动分流。原因是 wav 的播放命令在 MCI 命令串层是同步阻塞的，和落子音同队列串行会把落子拖后 300ms 以上。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>主题系统做了关键的一次解耦：棋盘配色与棋子材质各是各的下拉框，5 套配色和 5 种材质可以自由组合。切换时只重建精灵，不碰底板，代价从「整屏重绘」降到「局部替换」。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>13 / 64</Text>
+  </Box>
+</Slide>

@@ -368,10 +368,6 @@ class MusicPlayer:
         """当前曲目总时长（毫秒，缓存值）。"""
         return self._dur_ms
 
-    def is_paused(self) -> bool:
-        """是否处于暂停状态（缓存值）。"""
-        return self._mode_cache == "paused"
-
     def poll_state(self) -> dict:
         """给 UI 轮询的状态快照（纯内存读取，绝不触碰 MCI）。
 

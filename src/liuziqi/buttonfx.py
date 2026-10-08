@@ -168,6 +168,8 @@ _FAMILY_READY = [False]
 
 _SYS_MSYH = "C:/Windows/Fonts/msyh.ttc"
 _SYS_MSYHBD = "C:/Windows/Fonts/msyhbd.ttc"
+# 字形回退用的字体家族（微软雅黑，字形覆盖最全，且永远可解析到 msyh.ttc）
+_FALLBACK_TTF = "Microsoft YaHei UI"
 
 
 def _build_family_map():
@@ -211,6 +213,68 @@ def _get_font(family, size_px, bold):
         _FONT_CACHE.clear()
     _FONT_CACHE[key] = f
     return f
+
+
+# ------------------------------------------------------------------ 字形回退
+# PIL 不做字体回退：艺术字体（Google Fonts 的 Ma Shan Zheng 等）缺字形时
+# 会渲染成方框（例如「·」U+00B7 在毛笔楷书里就没有）。这里用「私有区字符
+# 必然落到 notdef 方框」的特性做覆盖率探测，缺字形就改用回退字体渲染，
+# 从而在保留艺术字体的同时杜绝方框。
+_NOTDEF_CH = "\uE000"
+_NOTDEF_CACHE: dict = {}
+
+
+def _notdef_box(font):
+    """返回该字体 notdef（缺字形方框）的包围盒，作为覆盖率参照。"""
+    key = id(font)
+    ref = _NOTDEF_CACHE.get(key)
+    if ref is None:
+        try:
+            d = ImageDraw.Draw(Image.new("L", (8, 8)))
+            ref = d.textbbox((0, 0), _NOTDEF_CH, font=font)
+        except Exception:
+            ref = None
+        if len(_NOTDEF_CACHE) > 400:
+            _NOTDEF_CACHE.clear()
+        _NOTDEF_CACHE[key] = ref
+    return ref
+
+
+def has_glyph(font, ch, ref=None):
+    """判断字体是否含 ch 的真实字形（缺字形会与 notdef 方框尺寸一致）。"""
+    try:
+        d = ImageDraw.Draw(Image.new("L", (8, 8)))
+        bb = d.textbbox((0, 0), ch, font=font)
+    except Exception:
+        return True
+    if ref is None:
+        ref = _notdef_box(font)
+    return ref is None or bb != ref
+
+
+def split_runs(text, font, fallback, icons=()):
+    """把 text 切成 [(kind, seg, font), ...]。
+
+    kind = "t"（文字）/ "i"（矢量图标）。逐个字符判断字形覆盖：艺术字体
+    缺字形时该字符单独改用 fallback 字体，其余仍用艺术字体，保证既美观
+    又不会出现方框。
+    """
+    ref_a = _notdef_box(font)
+    ref_b = _notdef_box(fallback) if fallback is not font else ref_a
+    runs = []
+    for ch in text:
+        if ch in icons:
+            kind, fnt = "i", None
+        else:
+            kind = "t"
+            fnt = font if has_glyph(font, ch, ref_a) else fallback
+            if fnt is None:
+                fnt = font
+        if runs and runs[-1][0] == kind and runs[-1][2] is fnt:
+            runs[-1][1] += ch
+        else:
+            runs.append([kind, ch, fnt])
+    return [(k, s, f) for k, s, f in runs]
 
 
 # ------------------------------------------------------------------ 主渲染
@@ -422,22 +486,17 @@ def _draw_text(canvas, text, font, fg, cx, cy, scale, shadow_alpha=0.30,
     except Exception:
         return
 
-    # 拆成 图标段 / 文字段
-    runs = []
-    for ch in text:
-        kind = "i" if ch in _ICON_GLYPHS else "t"
-        if runs and runs[-1][0] == kind:
-            runs[-1][1] += ch
-        else:
-            runs.append([kind, ch])
-
+    # 拆成 图标段 / 文字段；文字段再按字形覆盖切成「艺术字体 / 回退字体」
     d = ImageDraw.Draw(canvas)
     try:
-        f = _get_font(family, size_px, bold)
+        f_all = _get_font(family, size_px, bold)
+        # 回退字体（雅黑）保证任何字符都有字形，避免方框
+        f_fb = _get_font(_FALLBACK_TTF, size_px, bold) if family != _FALLBACK_TTF else f_all
+        runs = split_runs(text, f_all, f_fb, icons=_ICON_GLYPHS)
         widths = []
-        for kind, seg in runs:
+        for kind, seg, fnt in runs:
             if kind == "t":
-                widths.append(d.textlength(seg, font=f))
+                widths.append(d.textlength(seg, font=fnt))
             else:
                 widths.append(size_px * 0.74 * len(seg))
         total = sum(widths)
@@ -455,12 +514,13 @@ def _draw_text(canvas, text, font, fg, cx, cy, scale, shadow_alpha=0.30,
     sc = "#FFFFFF" if _lum(fg) < 110 else "#000000"
     sh_col = _parse(sc) + (int(255 * shadow_alpha),)
     main_col = _parse(fg) + (255,)
-    for (kind, seg), wd in zip(runs, widths):
+    for (kind, seg, fnt), wd in zip(runs, widths):
         if kind == "t":
             try:
                 if shadow_alpha > 0:
-                    d.text((x, cy + sh_off), seg, font=f, anchor="lm", fill=sh_col)
-                d.text((x, cy), seg, font=f, anchor="lm", fill=main_col)
+                    d.text((x, cy + sh_off), seg, font=fnt, anchor="lm",
+                           fill=sh_col)
+                d.text((x, cy), seg, font=fnt, anchor="lm", fill=main_col)
             except Exception:
                 pass
         else:
@@ -470,7 +530,9 @@ def _draw_text(canvas, text, font, fg, cx, cy, scale, shadow_alpha=0.30,
         x += wd
 
 
-_ICON_GLYPHS = set("▶◀▲▼⏸⏮⏭⏹■●")
+# 媒体图标：一律矢量绘制（字体缺字形会渲染成方框，且风格不统一）。
+# ♪ 也纳入：即便某处仍使用音符文字，也会走矢量分支而非方框。
+_ICON_GLYPHS = set("▶◀▲▼⏸⏮⏭⏹■●♪")
 
 
 def _poly(d, pts, col, sh_col, sh_off):
@@ -506,33 +568,33 @@ def _draw_icon(d, ch, cx, cy, u, col, sh_col, sh_off):
             d.rounded_rectangle([x0, cy - h / 2, x0 + bw, cy + h / 2],
                                 radius=bw * 0.4, fill=col)
     elif ch == "⏮":
-        bw = uw * 0.22
+        # 上一首：竖杠在左，三角尖朝左（标准"跳到开头"方向）
+        bw = uw * 0.20
         x0 = cx - uw / 2
+        apex_x = x0 + bw + uw * 0.07
+        base_x = cx + uw * 0.42
+        tri = [(apex_x, cy), (base_x, cy - uh * 0.48), (base_x, cy + uh * 0.48)]
         if sh_off:
             d.rounded_rectangle([x0, cy - uh / 2 + sh_off, x0 + bw, cy + uh / 2 + sh_off],
-                                radius=bw * 0.35, fill=sh_col)
-            _poly(d, [(x0 + bw + uw * 0.10, cy - uh / 2),
-                      (x0 + bw + uw * 0.10, cy + uh / 2),
-                      (cx + uw * 0.55, cy)], sh_col, sh_col, 0)
+                                radius=bw * 0.38, fill=sh_col)
+            _poly(d, [(px, py + sh_off) for px, py in tri], sh_col, sh_col, 0)
         d.rounded_rectangle([x0, cy - uh / 2, x0 + bw, cy + uh / 2],
-                            radius=bw * 0.35, fill=col)
-        _poly(d, [(x0 + bw + uw * 0.10, cy - uh / 2),
-                  (x0 + bw + uw * 0.10, cy + uh / 2),
-                  (cx + uw * 0.55, cy)], col, col, 0)
+                            radius=bw * 0.38, fill=col)
+        _poly(d, tri, col, col, 0)
     elif ch == "⏭":
-        bw = uw * 0.22
+        # 下一首：竖杠在右，三角尖朝右（标准"跳到结尾"方向）
+        bw = uw * 0.20
         x1 = cx + uw / 2
+        apex_x = x1 - bw - uw * 0.07
+        base_x = cx - uw * 0.42
+        tri = [(apex_x, cy), (base_x, cy - uh * 0.48), (base_x, cy + uh * 0.48)]
         if sh_off:
             d.rounded_rectangle([x1 - bw, cy - uh / 2 + sh_off, x1, cy + uh / 2 + sh_off],
-                                radius=bw * 0.35, fill=sh_col)
-            _poly(d, [(x1 - bw - uw * 0.10, cy - uh / 2),
-                      (x1 - bw - uw * 0.10, cy + uh / 2),
-                      (cx - uw * 0.55, cy)], sh_col, sh_col, 0)
+                                radius=bw * 0.38, fill=sh_col)
+            _poly(d, [(px, py + sh_off) for px, py in tri], sh_col, sh_col, 0)
         d.rounded_rectangle([x1 - bw, cy - uh / 2, x1, cy + uh / 2],
-                            radius=bw * 0.35, fill=col)
-        _poly(d, [(x1 - bw - uw * 0.10, cy - uh / 2),
-                  (x1 - bw - uw * 0.10, cy + uh / 2),
-                  (cx - uw * 0.55, cy)], col, col, 0)
+                            radius=bw * 0.38, fill=col)
+        _poly(d, tri, col, col, 0)
     elif ch in ("⏹", "■"):
         s = uw * 0.72
         if sh_off:
@@ -544,6 +606,30 @@ def _draw_icon(d, ch, cx, cy, u, col, sh_col, sh_off):
     elif ch == "●":
         r = uw * 0.42
         d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col)
+    elif ch == "♪":
+        # 八分音符（矢量）：音符头 + 音符干 + 右扬符尾。
+        # 雅黑等中文字体不含 U+266A 字形（PIL 又不做字体回退），
+        # 直接用字体渲染会得到乱码方框，故矢量绘制保证风格统一。
+        rx, ry = uw * 0.17, uh * 0.15          # 音符头（椭圆）半径
+        hx = cx - uw * 0.13
+        hy = cy + uh * 0.26
+        sx = hx + rx * 0.78                    # 音符干 x（贴头右缘）
+        sw = max(1.2, uw * 0.075)              # 干宽
+        top = cy - uh * 0.54                   # 干顶
+        stem = [sx, top, sx + sw, hy + ry * 0.2]
+        flag = [(sx + sw, top),
+                (sx + sw + uw * 0.24, top + uh * 0.20),
+                (sx + sw + uw * 0.10, top + uh * 0.40),
+                (sx + sw, top + uh * 0.26)]
+        if sh_off:
+            d.ellipse([hx - rx, hy - ry + sh_off, hx + rx, hy + ry + sh_off],
+                      fill=sh_col)
+            d.rounded_rectangle([stem[0], stem[1] + sh_off, stem[2], stem[3] + sh_off],
+                                radius=sw * 0.4, fill=sh_col)
+            d.polygon([(px, py + sh_off) for px, py in flag], fill=sh_col)
+        d.ellipse([hx - rx, hy - ry, hx + rx, hy + ry], fill=col)
+        d.rounded_rectangle(stem, radius=sw * 0.4, fill=col)
+        d.polygon(flag, fill=col)
 
 
 # ------------------------------------------------------------------ Tk 接口
@@ -586,11 +672,6 @@ def get_button_photo(c, w, h, base, fg, text, font,
         _CACHE.clear()
     _CACHE[key] = ph
     return ph
-
-
-def clear_cache():
-    _CACHE.clear()
-    _TK_SCALE[0] = None
 
 
 def available():

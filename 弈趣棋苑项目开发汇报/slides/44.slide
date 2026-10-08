@@ -1,0 +1,22 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>演示一 · 启动器与新建对局</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>统一入口 + 各棋种独立开局窗，是「一个棋苑、三种棋」的第一印象</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ flexDirection: "row", width: "100%", height: "100%", gap: 36, overflow: "hidden" }}>          <Box style={{ flexDirection: "column", gap: 10 }}>
+      <Image src="assets/shot_launcher.png" style={{ width: 410, height: 212, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(140,90,43,0.30)" }} />
+      <Text style={{ fontSize: 15, color: "#8C5A2B", fontWeight: "bold", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>① 启动器：三棋种入口 + 音乐栏</Text>
+    </Box>
+        <Box style={{ flex: 1, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>启动页中央是六子棋 / 五子棋 / 中国象棋三个入口，进入后分别是各自的新建对局窗口；角落另有音乐与设置入口。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>象棋的新建窗口可选三种模式：pvp（人机对战）、pve（皮卡鱼执黑）、aia（AI 互弈），并有三档难度。窗口全屏自适应，双击棋盘即落子。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>44 / 64</Text>
+  </Box>
+</Slide>

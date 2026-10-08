@@ -1,0 +1,58 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>五轮迭代：从画面修到交付物</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>五轮的工作对象逐轮外移：从画面 → 音效 → 运行环境 → 磁盘体积 → 交付文档</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center", gap: 14 }}>
+  <Box style={{ flexDirection: "row", alignItems: "stretch", justifyContent: "center", gap: 8 }}>
+<Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>1. 迭代一 · 画面</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>刮痕 / 方形光环 / 落子音 / 歌单 / 侧栏滚动 / 缩放验证</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>2. 迭代二 · 音效图标</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>MP3 落子音 / 上下首图标方向 / 歌单乱码 / 侧栏稳定</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>3. 迭代三 · PG 配置</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>PostgreSQL 安装引导 + 启动检测一键化</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>4. 迭代四 · 体积清理</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>定位 935MB 中 627MB 重复副本</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 158, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>5. 迭代五 · 文档</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>产品说明 / 算法实现 / 讲义 / 报告 四份 Word</Text>
+      </Box>
+  </Box>
+    <Box style={{ width: "100%", flexDirection: "column", gap: 8 }}>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 15, lineHeight: 1.64, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>第一、二轮打磨「打开就能玩」的体验。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 15, lineHeight: 1.64, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>第三、四轮解决「换台机器能不能跑、装不装得下」。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 15, lineHeight: 1.64, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>第五轮把成果变成可分发、可阅读的文档。</Text>
+    </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>这条曲线说明项目重心已从「功能实现」转向「产品化」。</Text>
+  </Box>
+    </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>29 / 64</Text>
+  </Box>
+</Slide>

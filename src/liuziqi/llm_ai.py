@@ -3,7 +3,7 @@
 llm_ai.py —— 大模型（LLM）对战引擎
 
 功能：
-    把当前棋盘以文本形式发给大模型（DeepSeek / 千问等 OpenAI 兼容接口），
+    把当前棋盘以文本形式发给大模型（千问等 OpenAI 兼容接口），
     由模型给出落子建议；程序解析并校验后落子。
 
 健壮性设计（重点）：
@@ -34,7 +34,8 @@ DEFAULT_CONFIG = resource("config", "llm.ini", writable=True)
 
 # 供应方标识 -> (配置节名, 中文显示名)
 PROVIDERS = {
-    "deepseek": ("deepseek", "DeepSeek"),
+    # 注：DeepSeek 已下线（引擎棋力不足观感差），如需恢复请同时恢复
+    # xiangqi_gui 的 dsds 模式与 ds_xiangqi.py，并在此登记 provider。
     "qwen": ("qwen", "千问"),
 }
 
@@ -91,7 +92,7 @@ class LLMAI:
     """大模型对战引擎。
 
     用法：
-        ai = LLMAI("deepseek")
+        ai = LLMAI("qwen")
         stones = ai.get_move(board, WHITE, stones_to_place=2)
     与本地 AI (ai.AI) 保持相同接口 get_move(board, color, stones_to_place)，
     可直接放入 Player(kind='llm') 由对局状态机驱动。
@@ -99,7 +100,7 @@ class LLMAI:
 
     def __init__(
         self,
-        provider: str = "deepseek",
+        provider: str = "qwen",
         config_path: str = DEFAULT_CONFIG,
         fallback_difficulty: str = "medium",
     ):
@@ -130,8 +131,14 @@ class LLMAI:
         if section not in cp:
             raise KeyError(f"llm.ini 缺少 [{section}] 配置节")
         d = cp[section]
+        api_key = d["api_key"].strip()
+        # 允许用环境变量提供密钥（DASHSCOPE_API_KEY），优先于明文配置文件，
+        # 减少真实密钥在 config/llm.ini 中落盘的风险。
+        env_key = os.environ.get("DASHSCOPE_API_KEY")
+        if env_key:
+            api_key = env_key
         return dict(
-            api_key=d["api_key"].strip(),
+            api_key=api_key,
             base_url=d["base_url"].strip(),
             model=d["model"].strip(),
             timeout=int(d.get("timeout", 40)),

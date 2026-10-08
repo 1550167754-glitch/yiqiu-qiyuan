@@ -1,0 +1,44 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>难点二 · 落子音链路 110ms → 16ms</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>用户只说「下棋音效有延迟」，测量后定位到两个叠加的根因</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column" }}>
+  <Box style={{ flexDirection: "row", height: "100%", gap: 30, alignItems: "center" }}>
+    <Box style={{ width: 520, flexDirection: "column", justifyContent: "center", gap: 10, alignItems: "center" }}>
+    <svg width="780" height="210" viewBox="0 0 780 210" style={{ background: "rgba(140,90,43,0.05)", borderRadius: 10, maxWidth: "100%", height: "auto" }}>
+      <rect x="20" y="40" width="320" height="56" rx="8" fill="#8C5A2B"/><text x="180" y="74" font-size="16" fill="#F5E3BE" text-anchor="middle" font-family="sans-serif">旧链路 110ms+</text>
+      <rect x="440" y="122" width="320" height="56" rx="8" fill="#B3271E"/><text x="600" y="156" font-size="16" fill="#F5E3BE" text-anchor="middle" font-family="sans-serif">新链路 16ms</text>
+      <text x="180" y="118" font-size="12" fill="#2A2118" text-anchor="middle" font-family="sans-serif">wav 同步阻塞 + 每次重开设备</text>
+      <text x="600" y="200" font-size="12" fill="#2A2118" text-anchor="middle" font-family="sans-serif">双轨队列 + 常驻 alias + 锁外发</text>
+      <path d="M340 68 C 430 68, 400 150, 440 150" stroke="#2A2118" stroke-width="2" fill="none" stroke-dasharray="5,4"/>
+    </svg>
+      <Text style={{ fontSize: 14, lineHeight: 1.4, color: "rgba(42,33,24,0.6)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>wav 的 play 同步阻塞 + 每次重开设备 = 延迟主因</Text>
+    </Box>
+    <Box style={{ flex: 1, flexDirection: "column", justifyContent: "center", gap: 6 }}>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>根因一：waveaudio 的 play 在命令串层同步阻塞，309~460ms 才返回。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>根因二：每次播放都 close→open 设备，初始化再花 15~45ms。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>修法：按扩展名双轨分流 + 常驻 alias 只 seek+play + play 锁外发。</Text>
+    </Box>
+    </Box>
+  </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>两个根因都藏在系统调用层——不测量就永远只能靠猜，猜不出真正的 300ms。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>40 / 64</Text>
+  </Box>
+</Slide>

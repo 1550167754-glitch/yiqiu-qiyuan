@@ -37,11 +37,16 @@
 ├─ assets/              资源根
 │   ├─ sounds/          音效（点击/落子/胜/负）
 │   ├─ fonts/           艺术字体 TTF（Google Fonts 开源）
+│   ├─ music/           背景音乐（本地放置，不入库）
 │   ├─ icon.ico         窗口/程序图标
 │   ├─ icon64.png
 │   └─ logo.png
+├─ engine/              第三方引擎（Pikafish NNUE，可执行文件 + 权重，不入库）
+├─ scripts/             构建与安装脚本（build_exe.bat / setup_dev.bat 等）
+├─ config/              实际配置（含密钥，已被 .gitignore 排除）
 ├─ config.example/      配置占位模板（database.ini / llm.ini，不含真实密钥）
-└─ dist/                编译产物（build_exe.bat 生成，自包含可运行）
+├─ data/  logs/         运行期数据（回放/战绩）与日志，程序自动创建
+└─ dist/  build/        打包产物（build_exe.bat 生成；已入库忽略，用时重建）
 ```
 
 ### 仓库说明

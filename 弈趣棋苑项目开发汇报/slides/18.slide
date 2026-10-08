@@ -1,0 +1,45 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>原理 · 棋子材质渲染的八层管线</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>顺序不可乱：每一层都建立在前一层的结果之上，光照类图层必须压在纹理之后</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column" }}>
+  <Box style={{ flexDirection: "row", height: "100%", gap: 30, alignItems: "center" }}>
+    <Box style={{ width: 520, flexDirection: "column", justifyContent: "center", gap: 10, alignItems: "center" }}>
+    <svg width="470" height="300" viewBox="0 0 470 300" style={{ background: "rgba(140,90,43,0.05)", borderRadius: 10, maxWidth: "100%", height: "auto" }}>
+      <rect x="30" y="12" width="410" height="26" rx="4" fill="#8C5A2B"/><text x="44" y="30" font-size="13" fill="#F5E3BE" font-family="sans-serif">1 侧壁</text>
+      <rect x="30" y="44" width="410" height="26" rx="4" fill="#B3271E"/><text x="44" y="62" font-size="13" fill="#F5E3BE" font-family="sans-serif">2 盘面渐变 · 3 年轮(只画外环) · 4 环境暗角</text>
+      <rect x="30" y="76" width="410" height="26" rx="4" fill="#2A2118"/><text x="44" y="94" font-size="13" fill="#F5E3BE" font-family="sans-serif">5 倒角明暗 · 6 底部反光 · 7 丝光(左上象限)</text>
+      <rect x="30" y="108" width="410" height="26" rx="4" fill="#8C5A2B"/><text x="44" y="126" font-size="13" fill="#F5E3BE" font-family="sans-serif">8 描边 · 9 阴刻字（0.62 格大小）</text>
+      <rect x="160" y="152" width="150" height="130" rx="75" fill="#8C5A2B" opacity="0.26"/>
+      <text x="235" y="224" font-size="14" fill="#2A2118" text-anchor="middle" font-family="sans-serif">圆形 · 不透明 · 木纹真实</text>
+    </svg>
+      <Text style={{ fontSize: 14, lineHeight: 1.4, color: "rgba(42,33,24,0.6)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>侧壁→盘面→年轮→暗角→倒角→反光→丝光→描边→阴刻字</Text>
+    </Box>
+    <Box style={{ flex: 1, flexDirection: "column", justifyContent: "center", gap: 6 }}>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>年轮只画 0.74r~0.99r 的外环带，中心留给字，避免纹理冲掉刻字。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>丝光是唯一的各向异性高光，只在左上象限，宽度约 (10+30g)。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.8)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>所有高光/纹理都避开中心字区——这是硬约束，不是可调项。</Text>
+    </Box>
+    </Box>
+  </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>八层叠出来的才是「木头」，少任何一层都会退回「色块」或「玻璃」。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>18 / 64</Text>
+  </Box>
+</Slide>

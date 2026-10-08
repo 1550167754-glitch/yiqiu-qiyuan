@@ -17,6 +17,7 @@ kill_search.py —— 五子棋本地算杀（VCF/VCT）与位棋盘棋形评估
 """
 from __future__ import annotations
 
+import threading
 import time
 
 from .board import BLACK, EMPTY, OPPOSITE, WHITE
@@ -43,6 +44,11 @@ DIRS4 = ((1, 0), (0, 1), (1, 1), (1, -1))
 # 查表：key=(win_count, cells元组) -> (score, top_class)
 # cells: 0=空 1=己方 2=挡（墙与对方子同属"挡"），未含墙 padding（函数内部补）
 _LINE_TABLE: dict = {}
+# 缓存上限：key 空间虽有限但仍设硬上限，避免长会话无界增长；
+# 命中率极高、重建代价低，超出时整体清空即可（仅在极端长对局触发）。
+_LINE_TABLE_CAP = 16384
+# 跨线程保护：AI 搜索跑在后台线程，查表读写需串行化，避免 dict 并发损坏。
+_LINE_TABLE_LOCK = threading.Lock()
 
 
 def _find_groups(cells, wc: int):
@@ -133,7 +139,8 @@ def _grade_group(cells, a: int, b: int, gap: int, cnt: int, wc: int):
 def _classify_cells(cells, wc: int):
     """整条线（己方视角）→ (总分, 最高棋形类别)。查表 + 贪心去重计分。"""
     key = (wc, tuple(cells))
-    hit = _LINE_TABLE.get(key)
+    with _LINE_TABLE_LOCK:
+        hit = _LINE_TABLE.get(key)
     if hit is not None:
         return hit
     # 连五优先（不可与其它组重叠计分）
@@ -161,7 +168,10 @@ def _classify_cells(cells, wc: int):
             if cls > top:
                 top = cls
         res = (total, top)
-    _LINE_TABLE[key] = res
+    with _LINE_TABLE_LOCK:
+        if len(_LINE_TABLE) >= _LINE_TABLE_CAP:
+            _LINE_TABLE.clear()
+        _LINE_TABLE[key] = res
     return res
 
 

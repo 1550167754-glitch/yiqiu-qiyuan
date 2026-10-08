@@ -346,10 +346,6 @@ class OrnateDialog(tk.Toplevel):
         c.create_oval(cx - 1, cy - 1, cx + 1, cy + 1,
                       fill=col, outline="")
 
-    # ---- 内容与按钮 ----
-    def _title_bottom_y(self):
-        return self._title_band_h
-
     def place_body(self, x: int | None = None, y: int | None = None,
                    width: int | None = None, height: int | None = None):
         """在画布上放置主体内容 frame。
@@ -394,9 +390,10 @@ class OrnateDialog(tk.Toplevel):
 
     def add_text(self, text: str, parent=None, fg: str = DG_TEXT,
                  size: int = 12, wraplength: int | None = None,
-                 pady: int | tuple = 6):
+                 pady: int | tuple = 6, mono: bool = False):
         """在 body 中添加一段文字。文字打到正文容器（grid row0），
-        与按钮区(row1)物理分隔。wraplength 为 96 DPI 设计值，随 DPI 放大。"""
+        与按钮区(row1)物理分隔。wraplength 为 96 DPI 设计值，随 DPI 放大。
+        mono=True 用等宽字体并左对齐（成绩/战绩表格对齐用）。"""
         parent = parent or self._text_frame
         # wraplength 必须不超过标签实际可用宽度（_dlg_w - 84：边距24*2 +
         # body padx 4*2 + label padx 10*2 再留余量），否则会被迫二次换行，
@@ -406,9 +403,12 @@ class OrnateDialog(tk.Toplevel):
             wraplength = max(80, min(int(wraplength * self._dpi_s), maxw))
         else:
             wraplength = maxw
+        fam = "Consolas" if mono else FONT_FAMILY
         lb = tk.Label(parent, text=text, bg=self._body_bg, fg=fg,
-                      font=(FONT_FAMILY, size), justify="center",
-                      anchor="center", wraplength=wraplength)
+                      font=(fam, size),
+                      justify="left" if mono else "center",
+                      anchor="w" if mono else "center",
+                      wraplength=wraplength)
         if parent is self._text_frame:
             # 注意：不要绑定 <Configure> 动态改 wraplength——布局初期宽度是
             # 1px，会把 wraplength 钳到极小值导致文字爆行数、正文被裁。
@@ -499,8 +499,18 @@ class OrnateDialog(tk.Toplevel):
         b._myfg = fg
         b._myw = width
         b._myh = height
+        b._sync_job = None
+
+        def _alive():
+            try:
+                return bool(b.winfo_exists())
+            except Exception:
+                return False
 
         def _draw():
+            # 弹窗可能已关闭 → 画布 Tcl 路径失效，跳过绘制
+            if not _alive():
+                return
             # 统一走全局玻璃质感渲染器（PIL 超采样：真抗锯齿边缘 +
             # 半透明玻璃高光 + 悬停光晕 + 按下内陷）
             draw_3d_button(b, b._myw, b._myh,
@@ -512,10 +522,33 @@ class OrnateDialog(tk.Toplevel):
         def _press(_e):
             b._pressed = True; _draw()
 
+        def _sync():
+            # 命令可能弹出新弹窗抢 grab，指针移出后收不到 <Leave> → 悬停态
+            # 卡住不复位。空闲时按指针真实位置对账复位。
+            b._sync_job = None
+            if not _alive():
+                return
+            b._pressed = False
+            try:
+                b._hover = (b.winfo_containing(b.winfo_pointerx(),
+                                               b.winfo_pointery()) is b)
+            except Exception:
+                b._hover = False
+            _draw()
+
         def _release(_e):
             b._pressed = False; _draw()
             if b._command:
                 b._command()
+            try:
+                if b._sync_job is not None:
+                    b.after_cancel(b._sync_job)
+            except Exception:
+                pass
+            try:
+                b._sync_job = b.after_idle(_sync)
+            except Exception:
+                b._sync_job = None
 
         def _enter(_e):
             if not b._pressed:
@@ -524,10 +557,21 @@ class OrnateDialog(tk.Toplevel):
         def _leave(_e):
             b._hover = False; b._pressed = False; _draw()
 
+        def _destroy(_e):
+            if getattr(_e, "widget", None) is not b:
+                return
+            try:
+                if b._sync_job is not None:
+                    b.after_cancel(b._sync_job)
+            except Exception:
+                pass
+            b._sync_job = None
+
         b.bind("<Button-1>", _press)
         b.bind("<ButtonRelease-1>", _release)
         b.bind("<Enter>", _enter)
         b.bind("<Leave>", _leave)
+        b.bind("<Destroy>", _destroy)
         b._draw = _draw
         _draw()
         self._buttons.append(b)

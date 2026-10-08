@@ -1,0 +1,22 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>演示二 · 六子棋完整对局</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>演示重点：落子可预期、AI 有回应、状态可回退</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ flexDirection: "row", width: "100%", height: "100%", gap: 36, overflow: "hidden" }}>        <Box style={{ flex: 1, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>先点目标格高亮、再点「确认」落子；状态条实时提示本回合还剩几子。这一局完整展示了从开局到中盘的交互节奏。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>自研 AlphaBeta 在时限内返回最佳着法，配合完整的落子动画链（抬棋 → 移动 → 落地）。「悔棋」一键回到我方决策点，「重开」复位棋盘。</Text>
+  </Box>
+          <Box style={{ flexDirection: "column", gap: 10 }}>
+      <Image src="assets/shot_connect6.png" style={{ width: 400, height: 200, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(140,90,43,0.30)" }} />
+      <Text style={{ fontSize: 15, color: "#8C5A2B", fontWeight: "bold", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>② 六子棋：两步式落子 + 侧栏</Text>
+    </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>45 / 64</Text>
+  </Box>
+</Slide>

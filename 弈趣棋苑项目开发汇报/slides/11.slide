@@ -1,0 +1,23 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>原理 · 两步式落子为什么可靠</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>状态机只有三个态，每个态都有明确的进入与退出条件</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ flexDirection: "row", width: "100%", height: "100%", gap: 36, overflow: "hidden" }}>        <Box style={{ flex: 1, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>落子被拆成「选格 → 确认」两步。先点目标格，棋盘高亮候选点、状态条提示本回合还剩几子；只有再点「确认」才真正落子。误触一格的代价从「下错棋」降到「重新选」。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>这个设计背后是一个只有三个态的状态机：idle（轮到你）→ selected（已选、待确认）→ placed（已落）。状态迁移的每一条边都对应一次明确的用户操作，没有隐式跳转。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>它带来的收益是可测的：任意 placed 态都能经悔棋回到「上一次落子之前」，状态机和撤销链一一对应。六子棋每轮可落 1~2 子，两步式还能顺带处理「这一轮还剩几个子」的计数问题。</Text>
+  </Box>
+          <Box style={{ flexDirection: "column", gap: 10 }}>
+      <Image src="assets/shot_connect6.png" style={{ width: 400, height: 205, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(140,90,43,0.30)" }} />
+      <Text style={{ fontSize: 15, color: "#8C5A2B", fontWeight: "bold", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>两步式：先选格高亮，再点确认落子</Text>
+    </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>11 / 64</Text>
+  </Box>
+</Slide>

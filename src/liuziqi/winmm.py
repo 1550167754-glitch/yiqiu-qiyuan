@@ -168,3 +168,36 @@ def locked(timeout: float = 1.0):
                 _LOCK.release()
             except Exception:
                 pass
+
+
+def force_unlock() -> bool:
+    """逃生口：释放/重建全局锁，用于调用方线程被 MCI 卡死后的自愈。
+
+    背景：``locked()`` 的 timeout 只限制**等待拿锁**的时间。一旦拿到锁后
+    ``mciSendStringW`` 本身卡死（设备被其它程序独占、驱动异常），
+    ``finally`` 永远不会执行，锁被永久持有 → 音效与音乐双双哑掉且无法恢复。
+
+    这里先尝试正常释放；失败（锁已被死线程持有）则**换成一把新锁**，
+    让后续调用立即恢复正常。旧锁随死线程的引用最终被回收。
+    返回 True 表示走了重建路径（调用方应记录一次异常）。
+    """
+    global _LOCK
+    rebuilt = False
+    try:
+        _LOCK.release()
+    except Exception:
+        pass
+    try:
+        # 探测旧锁是否仍被占用：能立刻 acquire 说明其实没被持有
+        if _LOCK.acquire(blocking=False):
+            _LOCK.release()
+        else:
+            rebuilt = True
+    except Exception:
+        rebuilt = True
+    if rebuilt:
+        try:
+            _LOCK = threading.Lock()
+        except Exception:
+            pass
+    return rebuilt

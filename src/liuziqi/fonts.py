@@ -101,37 +101,3 @@ class FontManager:
             self.current_label = label
             self.current_family = self._label_to_family[label]
         return self.current_family
-
-    def make_font(self, size: int, bold: bool = False) -> tuple:
-        """构造一个 Tk font：(family, size, weight)。
-
-        优先使用艺术字体；若当前家族不可用，回退到 FALLBACK_FAMILY。
-        字号乘以全局 font_scale 系数（用户可调，与 DPI SCALE 分开）。
-        """
-        family = self.current_family or FALLBACK_FAMILY
-        weight = "bold" if bold else "normal"
-        return (family, max(7, int(size * self.font_scale)), weight)
-
-    def make_ui_font(self, size: int, bold: bool = False) -> tuple:
-        """UI 正文 / 标签字体：始终清晰（保持用户原文要求）。"""
-        weight = "bold" if bold else "normal"
-        return (FALLBACK_FAMILY, max(7, int(size * self.font_scale)), weight)
-
-    def cleanup(self):
-        """程序退出前反向注销（私有注册进程结束后自动释放，留作兜底）。"""
-        if not self._available or not self._registered:
-            return
-        try:
-            import ctypes
-            import ctypes.wintypes
-            gdi32 = ctypes.windll.gdi32
-            gdi32.RemoveFontResourceExW.restype = ctypes.c_int
-            gdi32.RemoveFontResourceExW.argtypes = [
-                ctypes.wintypes.LPCWSTR, ctypes.c_uint32, ctypes.c_void_p]
-            for path in self._registered:
-                try:
-                    gdi32.RemoveFontResourceExW(path, _FR_PRIVATE, 0)
-                except Exception:
-                    continue
-        except Exception:
-            pass

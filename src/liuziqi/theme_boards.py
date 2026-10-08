@@ -20,7 +20,6 @@ theme_boards.py —— 棋盘主题模块（5 种可选棋盘皮肤）
     stone_edge  : 棋子描边微调（浅色盘用深边，深色盘用亮边）
 """
 from __future__ import annotations
-import os
 
 THEME_NAMES = ["经典原木", "胡桃深木", "石板灰", "墨玉黑", "青瓷绿"]
 
@@ -54,18 +53,3 @@ def blend(c1: str, c2: str, ratio: float) -> str:
     g = int(int(c1[3:5], 16) + (int(c2[3:5], 16) - int(c1[3:5], 16)) * ratio)
     b = int(int(c1[5:7], 16) + (int(c2[5:7], 16) - int(c1[5:7], 16)) * ratio)
     return f"#{r:02X}{g:02X}{b:02X}"
-
-
-def custom_board_image(size_px: int = 0) -> str | None:
-    """查找用户自定义棋盘图片（assets/boards/board_custom.png）。
-
-    返回文件路径；不存在返回 None。
-    """
-    base = os.path.normpath(os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "assets", "boards"))
-    for name in ("board_custom.png", "board_custom.gif"):
-        p = os.path.join(base, name)
-        if os.path.exists(p):
-            return p
-    return None

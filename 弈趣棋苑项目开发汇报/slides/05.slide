@@ -1,0 +1,30 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>起点：先让六子棋能玩、好看、不卡</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>从单棋种到三棋种，复用发生在哪一层、差异被压缩在哪几处</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>这个项目开始得很朴素：把六子棋做成一个能下、好看、不卡顿的小游戏。最初它只有一个棋盘和一个落子逻辑，连主题切换都没有，界面是 Tkinter 的默认灰。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>真正的转折发生在接入第二个棋种的时候。当时以为要给五子棋重写一套界面，动手才发现——渲染层、音效层、难度选择、存档逻辑，几乎没有一行需要改。差异全被收敛在棋盘尺寸、连子规则和 AI 后端这三个点上。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>于是一个判断成立了：把这三处做成可替换的「插槽」，剩下的全部沉到公共底座。这在后来接象棋时得到验证——象棋规则和落子方式（翻山炮、飞将、将死）与前两者差异极大，但界面层只补了一个窗口类。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>最有价值的产出因此不是某个算法，而是一套可复用的「界面语言」：左边棋盘、右边控制台（音乐、双方身份、轮到谁、胜率、难度、主题）。用户学会一个棋种，就等于学会了三个。</Text>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 11 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.82)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>复用层：渲染 / 音频 / 主题 / 存档 / 难度 / 侧栏布局——三棋种跑同一份代码。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 11 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.82)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>差异层：棋盘尺寸、连子规则、每轮落子数、AI 后端——只有这四处需要各写一份。</Text>
+    </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>结论：接第二个棋种的成本，比接第一个低了将近一个数量级——这是「棋苑」架构成立的直接证据。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>05 / 64</Text>
+  </Box>
+</Slide>

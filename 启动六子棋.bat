@@ -1,13 +1,19 @@
 @echo off
-rem Áù×ÓÆå Connect6 ¡ª¡ª Ô´ÂëÔËĞĞ½Å±¾£¨Ê¹ÓÃ venv£©
+rem å¼ˆè¶£æ£‹è‹‘ ä»æºç å¯åŠ¨è„šæœ¬ï¼ˆä½¿ç”¨ venvï¼›venv ä¸å­˜åœ¨æ—¶å›é€€åˆ° PATH ä¸Šçš„ pythonï¼‰
 chcp 65001 >nul
 cd /d "%~dp0"
-set PYTHON="C:\Users\ASUS\.workbuddy\venvs\liuziqi\Scripts\python.exe"
-if not exist %PYTHON% (
-  echo [´íÎó] Î´ÕÒµ½ venv£º%PYTHON%
-  echo ÇëÏÈÖ´ĞĞ setup_dev.bat ´´½¨ĞéÄâ»·¾³²¢°²×°ÒÀÀµ¡£
+
+set "PYTHON="
+if exist "C:\Users\ASUS\.workbuddy\venvs\liuziqi\Scripts\python.exe" (
+  set "PYTHON=C:\Users\ASUS\.workbuddy\venvs\liuziqi\Scripts\python.exe"
+) else (
+  where python >nul 2>&1 && set "PYTHON=python"
+)
+if not defined PYTHON (
+  echo [ERROR] æœªæ‰¾åˆ° pythonï¼Œè¯·å…ˆè¿è¡Œ scripts\setup_dev.bat åˆ›å»º venv
   pause
   exit /b 1
 )
+
 %PYTHON% run.py
 if errorlevel 1 pause

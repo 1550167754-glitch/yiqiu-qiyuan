@@ -1,0 +1,16 @@
+<Slide style={{ width: 1280, height: 720, position: "relative", padding: "0px", background: "#2A2118", overflow: "hidden" }}>
+  <Image src="assets/wood_panel.jpg" style={{ position: "absolute", top: 0, left: 0, width: 1280, height: 720, objectFit: "cover", opacity: 0.22 }} />
+  <Box style={{ position: "absolute", top: 0, left: 0, width: 1280, height: 720, background: "linear-gradient(160deg, #2A2118 0%, #3E2E1E 55%, #8C5A2B 100%)", opacity: 0.55 }} />
+  <Box style={{ position: "absolute", right: 84, top: 48, flexDirection: "column", alignItems: "flex-end" }}>
+    <Text style={{ fontSize: 210, fontWeight: "bold", lineHeight: 1.0, color: "rgba(179,39,30,0.85)", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>03</Text>
+  </Box>
+  <Box style={{ position: "relative", zIndex: 2, width: 1280, height: 720, padding: "0px 96px", flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 22, color: "rgba(245,227,190,0.7)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 6 }}>第 03 章</Text>
+    <Text style={{ fontSize: 62, fontWeight: "bold", color: "#F5E3BE", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", marginTop: 12 }}>技术架构</Text>
+    <Box style={{ width: 70, height: 3, background: "#B3271E", marginTop: 20 }} />
+    <Text style={{ fontSize: 22, fontStyle: "italic", color: "rgba(245,227,190,0.82)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 20 }}>渲染 · 音频 · AI 三条主线的原理</Text>
+  </Box>
+  <Box style={{ position: "absolute", right: 60, bottom: 50, width: 52, height: 52, borderRadius: 6, background: "#B3271E", justifyContent: "center", alignItems: "center" }}>
+    <Text style={{ fontSize: 28, fontWeight: "bold", color: "#F5E3BE", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>弈</Text>
+  </Box>
+</Slide>

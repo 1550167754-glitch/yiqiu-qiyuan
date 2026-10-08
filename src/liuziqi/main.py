@@ -10,7 +10,7 @@ CLI 额外参数：
     --mode human_ai|human_human|ai_ai   直接指定对局模式
     --side black|white                  人机模式下人的执色
     --difficulty easy|medium|hard       AI 难度
-    --engine local|deepseek|qwen        机机(观战)对战的落子引擎
+    --engine local|qwen                 机机(观战)对战的落子引擎
 
 设计要点：
     - 图形界面无法启动时自动回退到文字菜单（健壮性）；
@@ -19,12 +19,10 @@ CLI 额外参数：
 from __future__ import annotations
 
 import argparse
-import sys
 
 from .board import BLACK, WHITE, COLOR_NAMES
 from .game import Game, Player, MODE_HUMAN_AI, MODE_HUMAN_HUMAN, MODE_AI_AI
 from .llm_ai import LLMAI
-from .paths import resource
 
 
 def _menu() -> str:
@@ -75,19 +73,6 @@ def parse_move(text: str, board) -> list:
     return out
 
 
-def _ask_engine(default: str) -> str:
-    labels = {"本地-简单": "local_easy", "本地-中等": "local_medium",
-              "本地-困难": "local_hard", "DeepSeek": "deepseek", "千问": "qwen"}
-    print("请选择引擎：")
-    for i, k in enumerate(labels, 1):
-        print(f" {i}. {k}")
-    while True:
-        s = input("引擎：").strip()
-        if s.isdigit() and 1 <= int(s) <= len(labels):
-            return list(labels.values())[int(s) - 1]
-        print("无效输入。")
-
-
 def _make_ai_player(name, side, difficulty):
     if difficulty.startswith("local"):
         return Player(name, kind="ai", difficulty=difficulty.split("_")[1])
@@ -129,7 +114,10 @@ def run_cli_game(mode: str, side: str, difficulty: str):
             game.resign()
             break
         if s == "u":
-            game.undo_round()
+            # 人机模式：撤到轮到自己（撤整轮 = AI 一步 + 我方一步）；
+            # 双人模式：撤一轮
+            kinds = {p.kind for p in game.players.values()}
+            game.undo_round(to_human=("human" in kinds and "ai" in kinds))
             continue
         pts = parse_move(s, game.board)
         if len(pts) < 1 or len(pts) > game.max_stones:
@@ -210,8 +198,8 @@ def main():
                         help="人机模式下人的执色（--cli 时生效）")
     parser.add_argument("--difficulty", choices=["easy", "medium", "hard"], default="medium",
                         help="AI 难度")
-    parser.add_argument("--engine", choices=["local", "deepseek", "qwen"], default="local",
-                        help="机机(观战)对战的落子引擎：本地AI / DeepSeek / 千问")
+    parser.add_argument("--engine", choices=["local", "qwen"], default="local",
+                        help="机机(观战)对战的落子引擎：本地AI / 千问")
     args = parser.parse_args()
 
     if args.cli:

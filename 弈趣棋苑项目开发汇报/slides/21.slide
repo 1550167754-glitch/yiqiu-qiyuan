@@ -1,0 +1,34 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>原理 · 音频锁死了怎么救回来</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>根因不在「锁的等待时间」，而在「拿到锁之后永久不返回」这一无解情况</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>锁用的是 winmm.locked(timeout)，但 timeout 只限制「等锁」的时间。真正麻烦的地方在拿到锁之后：万一 mciSendStringW 因为设备被独占或驱动异常而永久不返回，finally 块永远执行不到，这把锁就被那个死线程永久持有。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>后果是连锁的：后续音效 worker 全部卡在等锁上，队列越积越多直到填满，最后音效和背景音乐一起永久静默——而界面上看不出任何报错。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>所以补了两层保护。第一层是 force_unlock：探测到锁仍被占用，就整体换一把全新的 Lock，把死锁对象直接抛弃。第二层是 recover：清掉所有常驻 alias，重新开局，保证音效链路从干净状态恢复。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>这条自愈链路是踩过实机死锁之后才补上的。在它之前，任何一次设备异常都可能让整个音频系统永久失声，而且必须重启程序才能恢复。</Text>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 11 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.82)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>force_unlock：判定锁被死线程持有后，整体换新锁对象；</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 11 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.82)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>recover：关闭全部常驻 alias 并清空映射表，链路重新初始化；</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 11 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.82)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>健康检查：队列积压持续 3 秒不降才触发恢复，避免误判正常播放。</Text>
+    </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>防御性设计的核心：假定外部调用一定会失败，并给出「不重启也能自愈」的路径。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>21 / 64</Text>
+  </Box>
+</Slide>

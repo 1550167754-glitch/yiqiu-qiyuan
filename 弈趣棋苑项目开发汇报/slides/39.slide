@@ -1,0 +1,33 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>难点一续 · 棋子一度像塑料</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>塑料感的根因是「加了一层木头没有的东西」：点状高光与过亮倒角</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>棋子一度被评价为「塑料感」：原因是叠加了一个白色点状高光加上过亮的倒角，看着像玻璃球或塑料钮扣，而不是木头。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>真实的木材表面不会有圆点状的镜面高光，它只有各向异性的丝光——一道贴着纹理方向的、很窄的柔光带。所以处理上做了三件事：删掉整层点状高光；把定向光的 α 峰值压到 28 以下；暗部颜色不再用固定深棕，而是按每种材质各自的基色去混（否则浅色材质上会泛出脏褐色）。</Text>
+    <Text style={{ fontSize: 17, lineHeight: 1.68, color: "#2A2118", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 11 }}>倒角的亮边也收窄了，过亮会像金属包边。这一轮改动全部是「减」，没有任何「加」——但木头感反而立起来了。</Text>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 11 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.82)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>删除整层白色点状高光（这是塑料/玻璃的典型特征）；</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 11 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.82)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>定向光 α 上限压到 28，暗部按材质基色取色；</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 11 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 16, lineHeight: 1.64, color: "rgba(42,33,24,0.82)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>丝光、倒角的参数全部回落到克制区间。</Text>
+    </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>木头只有各向异性丝光，没有镜面亮点——把这两者分清，材质才真实。</Text>
+  </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>39 / 64</Text>
+  </Box>
+</Slide>

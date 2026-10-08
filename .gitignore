@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+.cache/
 
 # 打包产物（如需保留 dist，注释掉下面两行）
 build/
@@ -25,6 +26,9 @@ end_dialog_error.log
 # ---- 音乐资源：无损 WAV 体积过大(273MB)，不适合 git 存储 ----
 # 且可能涉及音频版权，不在公开仓库传播。运行时从本地 assets/music 加载。
 assets/music/
+
+# ---- 第三方引擎二进制（Pikafish NNUE，72MB，不进库；自行下载放入 engine/） ----
+engine/
 
 # ---- 工具/元数据目录：不进版本库 ----
 .workbuddy/

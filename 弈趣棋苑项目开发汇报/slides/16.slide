@@ -1,0 +1,53 @@
+<Slide style={{ width: 1280, height: 720, padding: "20px 72px", background: "#F5E3BE", flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: 122, flexDirection: "column", justifyContent: "center" }}>
+    <Text style={{ fontSize: 34, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>原理 · 4× 超采样渲染管线</Text>
+    <Box style={{ width: 56, height: 2, background: "#B3271E", marginTop: 10 }} />
+    <Text style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(42,33,24,0.62)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 8 }}>四段管线解决同一个问题：让边缘在小尺寸下不糊、放大后不脏</Text>
+  </Box>
+  <Box style={{ width: "100%", height: 510, flexDirection: "column" }}>
+  <Box style={{ width: "100%", height: "100%", flexDirection: "column", justifyContent: "center", gap: 14 }}>
+  <Box style={{ flexDirection: "row", alignItems: "stretch", justifyContent: "center", gap: 8 }}>
+<Box style={{ width: 186, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>1. SS=4 绘制</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>在 4 倍分辨率空间画棋盘/棋子，天然抗锯齿</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 186, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>2. BOX 降采样</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>面积平均，无负瓣，边界无振铃</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 186, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>3. UnsharpMask</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>radius 1.1 / 60% / 阈值 2 找回锐度</Text>
+      </Box>
+      <Text style={{ fontSize: 20, color: "#B3271E", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif", alignSelf: "center" }}>→</Text>
+      <Box style={{ width: 186, background: "rgba(140,90,43,0.10)", borderLeft: "4px solid #8C5A2B", borderRadius: 6, padding: "12px 11px", flexDirection: "column", gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: "bold", color: "#2A2118", fontFamily: "'Songti SC', 'STSong', 'SimSun', serif" }}>4. 重建 Alpha</Text>
+        <Text style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(42,33,24,0.72)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>圆内不透明 + 最外羽化，与内容取 lighter</Text>
+      </Box>
+  </Box>
+    <Box style={{ width: "100%", flexDirection: "column", gap: 8 }}>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 15, lineHeight: 1.64, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>先在 4× 空间画，等于把「锯齿」这一先天问题降级成「采样」这一确定问题。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 15, lineHeight: 1.64, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>降采样用面积平均而非插值核，为了从根上避开振铃（详见下页对比）。</Text>
+    </Box>
+    <Box style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <Box style={{ width: 7, height: 7, borderRadius: 2, background: "#B3271E", marginTop: 9 }} />
+      <Text style={{ fontSize: 15, lineHeight: 1.64, color: "rgba(42,33,24,0.78)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", flex: 1 }}>降采样会把圆外透明像素混进内部，所以最后必须重建 alpha。</Text>
+    </Box>
+  <Box style={{ width: "100%", background: "rgba(42,33,24,0.94)", borderLeft: "5px solid #B3271E", borderRadius: 6, padding: "10px 20px", marginTop: 4 }}>
+    <Text style={{ fontSize: 15, lineHeight: 1.45, color: "rgba(245,227,190,0.92)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>这条管线的每一段都不是设计出来的，而是被具体的画质问题一步步逼出来的。</Text>
+  </Box>
+    </Box>
+  </Box>
+  </Box>
+  <Box style={{ width: "100%", height: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>弈趣棋苑 · 项目开发汇报</Text>
+    <Text style={{ fontSize: 14, color: "rgba(42,33,24,0.55)", fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif" }}>16 / 64</Text>
+  </Box>
+</Slide>
