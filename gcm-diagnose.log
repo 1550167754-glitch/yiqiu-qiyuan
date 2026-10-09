@@ -1,0 +1,183 @@
+﻿Diagnose log at 2026-10-09T04:14:51Z
+
+AppPath: C:\Program Files\Git\ucrt64\bin\git-credential-manager.exe
+InstallDir: C:\Program Files\Git\ucrt64\bin\
+Version: 2.9.1+6760f0ef069c994aa2bb1d703fb374986ee82a3e
+
+------------
+Diagnostic: Environment
+Skipped: False
+Success: True
+Exception: None
+Log:
+OSType: Windows
+OSVersion: 10.0 (build 26200)
+Reading environment variables... OK
+ Variables:
+OneDriveConsumer=C:\Users\ASUS\OneDrive
+ProgramFiles(x86)=C:\Program Files (x86)
+EFC_84628_3789132940=1
+DSH_SHELL=1
+PAGER=cat
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 186 Stepping 2, GenuineIntel
+TMP=C:\Users\ASUS\AppData\Local\Temp
+PROCESSOR_ARCHITECTURE=AMD64
+Path=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\Bandizip\;D:\runtime\win64;D:\bin;C:\Users\ASUS\AppData\Local\Microsoft\WindowsApps;C:\Users\ASUS\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\ASUS\AppData\Local\Programs\DockerDesktop\resources\bin;D:\PyCharm 2026.2.1\bin;C:\Users\ASUS\AppData\Local\Python\bin;C:\Program Files\PostgreSQL\18\bin;D:\;C:\Program Files\Git\cmd;C:\Users\ASUS\AppData\Local\Programs\AntigravityCLI;C:\Users\ASUS\AppData\Local\Microsoft\WindowsApps;C:\Users\ASUS\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\ASUS\AppData\Local\Programs\DockerDesktop\resources\bin;D:\PyCharm 2026.2.1\bin;C:\Users\ASUS\AppData\Local\Python\bin;C:\Users\ASUS\AppData\Roaming\npm;C:\Users\ASUS\AppData\Local\Unity\bin;C:\Users\ASUS\AppData\Local\agy\bin
+DSH_PROFILE=desktop
+PUBLIC=C:\Users\Public
+USERPROFILE=C:\Users\ASUS
+PROCESSOR_REVISION=ba02
+TEMP=C:\Users\ASUS\AppData\Local\Temp
+FPS_BROWSER_APP_PROFILE_STRING=Internet Explorer
+FPS_BROWSER_USER_PROFILE_STRING=Default
+DSH_PROFILE_DIR=C:\Users\ASUS\.dsh\profiles\desktop
+NO_COLOR=1
+SystemRoot=C:\Windows
+EFC_84628_2283032206=1
+OneDrive=C:\Users\ASUS\OneDrive
+USERDOMAIN_ROAMINGPROFILE=寂寞城市又再探
+DSH_SESSION_ID=session-6060c40e-378f-44df-b609-0d5cc4043171
+CommonProgramFiles(x86)=C:\Program Files (x86)\Common Files
+ZES_ENABLE_SYSMAN=1
+ProgramW6432=C:\Program Files
+ProgramData=C:\ProgramData
+HOMEPATH=\Users\ASUS
+EFC_84628_1262719628=1
+EFC_84628_2775293581=1
+DSH_HOME=C:\Users\ASUS\.dsh
+ALLUSERSPROFILE=C:\ProgramData
+CommonProgramW6432=C:\Program Files\Common Files
+USERNAME=ASUS
+SESSIONNAME=Console
+DriverData=C:\Windows\System32\Drivers\DriverData
+HOMEDRIVE=C:
+windir=C:\Windows
+GIT_TRACE2_PARENT_SID=1f702e5f-965c-4b84-b66b-0ec0598efb31
+SystemDrive=C:
+NUMBER_OF_PROCESSORS=20
+OS=Windows_NT
+EFC_84628_1592913036=1
+COMPUTERNAME=寂寞城市又再探
+ProgramFiles=C:\Program Files
+ComSpec=C:\Windows\system32\cmd.exe
+PSModulePath=C:\Users\ASUS\Documents\WindowsPowerShell\Modules;C:\Program Files\WindowsPowerShell\Modules;C:\Windows\system32\WindowsPowerShell\v1.0\Modules
+PATHEXT=.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL
+LOGONSERVER=\\寂寞城市又再探
+ELECTRON_RUN_AS_NODE=1
+EFC_84628_4126798990=1
+APPDATA=C:\Users\ASUS\AppData\Roaming
+USERDOMAIN=寂寞城市又再探
+PROCESSOR_LEVEL=6
+LOCALAPPDATA=C:\Users\ASUS\AppData\Local
+VIPSHOME=\\?\C:\Users\ASUS\AppData\Local\Programs\DeepSeek Harness\resources\app.asar.unpacked\dsh\node_modules\@img\sharp-win32-x64
+PyCharm=D:\PyCharm 2026.2.1\bin
+GIT_PAGER=cat
+DSH_WEB_URL=http://127.0.0.1:19387
+CommonProgramFiles=C:\Program Files\Common Files
+
+
+------------
+Diagnostic: File system
+Skipped: False
+Success: True
+Exception: None
+Log:
+Temporary directory is 'C:\Users\ASUS\AppData\Local\Temp\'...
+Checking basic file I/O...
+Writing to temporary file 'C:\Users\ASUS\AppData\Local\Temp\dd204f79a8ff43bcb82d4c2e'... OK
+Reading from temporary file 'C:\Users\ASUS\AppData\Local\Temp\dd204f79a8ff43bcb82d4c2e'... OK
+Deleting temporary file 'C:\Users\ASUS\AppData\Local\Temp\dd204f79a8ff43bcb82d4c2e'... OK
+Testing IFileSystem instance...
+UserHomePath: C:\Users\ASUS
+UserDataDirectoryPath: C:\Users\ASUS\.gcm
+GetCurrentDirectory(): C:\Users\ASUS\Desktop\六子棋源代码
+
+------------
+Diagnostic: Networking
+Skipped: False
+Success: True
+Exception: None
+Log:
+Checking networking and HTTP stack...
+Creating HTTP client... OK
+IsNetworkAvailable: True
+Sending HEAD request to http://example.com... OK
+Sending HEAD request to https://example.com... OK
+Acquiring free TCP port... OK
+Testing local HTTP loopback connections...
+Creating new HTTP listener for http://localhost:11708/... OK
+Waiting for loopback connection... OK
+Writing response... OK
+Waiting for response data... OK
+Loopback connection data OK
+
+------------
+Diagnostic: Git
+Skipped: False
+Success: True
+Exception: None
+Log:
+Getting Git version... OK
+Git version is '2.56.0.windows.1'
+Locating current repository...Git repository at 'C:/Users/ASUS/Desktop/六子棋源代码/.git'
+ OK
+Listing all Git configuration... OK
+Git configuration:
+file:C:/Program Files/Git/etc/gitconfig	diff.astextplain.textconv=astextplain
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.process=git-lfs filter-process
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.required=true
+file:C:/Program Files/Git/etc/gitconfig	http.sslbackend=schannel
+file:C:/Program Files/Git/etc/gitconfig	core.autocrlf=true
+file:C:/Program Files/Git/etc/gitconfig	core.fscache=true
+file:C:/Program Files/Git/etc/gitconfig	core.symlinks=false
+file:C:/Program Files/Git/etc/gitconfig	pull.rebase=false
+file:C:/Program Files/Git/etc/gitconfig	credential.helper=manager
+file:C:/Program Files/Git/etc/gitconfig	credential.https://dev.azure.com.usehttppath=true
+file:C:/Program Files/Git/etc/gitconfig	init.defaultbranch=master
+file:C:/Users/ASUS/.gitconfig	credential.helperselector.selected=manager
+file:.git/config	core.repositoryformatversion=0
+file:.git/config	core.filemode=false
+file:.git/config	core.bare=false
+file:.git/config	core.logallrefupdates=true
+file:.git/config	core.symlinks=false
+file:.git/config	core.ignorecase=true
+file:.git/config	user.email=1550167754@qq.com
+file:.git/config	user.name=Liuziqi-Dev
+
+
+------------
+Diagnostic: Credential storage
+Skipped: False
+Success: True
+Exception: None
+Log:
+ICredentialStore instance is of type: CredentialStore
+Writing test credential... OK
+Reading test credential... OK
+Deleting test credential... OK
+
+------------
+Diagnostic: Microsoft authentication (AAD/MSA)
+Skipped: False
+Success: True
+Exception: None
+Log:
+Broker is not enabled.
+Gathering MSAL token cache data... OK
+CacheDirectory: C:\Users\ASUS\AppData\Local\.IdentityService
+CacheFileName: msal.cache
+CacheFilePath: C:\Users\ASUS\AppData\Local\.IdentityService\msal.cache
+Creating cache helper... OK
+Verifying MSAL token cache persistence... OK
+
+------------
+Diagnostic: GitHub API
+Skipped: False
+Success: True
+Exception: None
+Log:
+Using 'https://github.com/' as API target.
+Querying '/meta' endpoint... OK
+

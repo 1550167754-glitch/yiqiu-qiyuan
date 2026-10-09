@@ -138,21 +138,22 @@ console.log('   引用的本地资源全部就位：' + refs.join(' / '));
 
 // ------------------------------------------------------------------ GitHub Pages 载体
 // GitHub Pages 只能从"仓库根目录"或"仓库里的 docs/ 目录"发布，不能指定 /web。
-// 所以这里把同一份发布产物再复制到仓库根目录的 docs/ ——
-// 用 GitHub Desktop 一键 Publish 之后，只要把 Pages 源选成 main /docs 就能上线。
-// 顺序：先清掉 docs 下的旧产物文件（保留目录本身），再平铺复制。
+// 而且不能指定更深的子目录（没有 docs/pages 这种选项），所以网页产物直接平铺进 docs/。
+//
+// ⚠ docs/ 里本来就有项目的《开发日志.md》（仓库原有内容），绝不能整个清空。
+//   这里只覆盖/新增"网页产物这几个固定文件名"，其余文件一律不碰。
 var DOCS = path.join(ROOT, '..', 'docs');
-var DOCS_PAGES = path.join(DOCS, 'pages');
-// 注意 docs/ 下还有项目的开发日志（docs/开发日志.md），绝不能整个清空，
-// 因此发布产物单独放 docs/pages/ 子目录。
-if (fs.existsSync(DOCS_PAGES)) fs.rmSync(DOCS_PAGES, { recursive: true, force: true });
-fs.mkdirSync(DOCS_PAGES, { recursive: true });
-['index.html', 'style.css', 'app.js', 'engine.bundle.js', 'favicon.svg', '.nojekyll']
-  .forEach(function (name) {
-    var src = path.join(SITE, name);
-    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(DOCS_PAGES, name));
-  });
-console.log('已生成 GitHub Pages 载体 ' + DOCS_PAGES + '（Pages 源选 main /docs/pages）');
+if (!fs.existsSync(DOCS)) fs.mkdirSync(DOCS, { recursive: true });
+var PAGE_FILES = ['index.html', 'style.css', 'app.js', 'engine.bundle.js', 'favicon.svg', '.nojekyll'];
+PAGE_FILES.forEach(function (name) {
+  var src = path.join(SITE, name);
+  if (fs.existsSync(src)) fs.copyFileSync(src, path.join(DOCS, name));
+});
+// 旧的 docs/pages/ 产物清掉（改布局后不再需要，避免仓库里留两套）
+var OLD_PAGES = path.join(DOCS, 'pages');
+if (fs.existsSync(OLD_PAGES)) fs.rmSync(OLD_PAGES, { recursive: true, force: true });
+console.log('已铺好 GitHub Pages 载体 docs/（Pages 源选 main /docs）');
+console.log('   注意：docs/开发日志.md 等项目文档未被触碰');
 
 // 顺手做一次语法自检：在 Node 里加载打包产物，确认模块键名与导出都对得上
 try {
