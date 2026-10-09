@@ -91,16 +91,40 @@ python web\tests\parity.py               :: 跨语言对拍：桌面版(Python) 
 
 ## 五、发布到公开网址（免费）
 
-**发布产物在 `web/dist/site/`**（`node web/build.js` 自动生成，约 165 KB，自包含、无后端）。
-把**这个目录**整个上传/拖拽到静态托管即可；不要传整个项目（`web/` 是开发目录，里面还有源码与测试）。
+### ✅ 已经上线
 
-| 方式 | 步骤 | 备注 |
-|---|---|---|
-| **Netlify Drop**（最省事） | 打开 <https://app.netlify.com/drop>，把 `web/dist/site` 拖进去 | 免注册即可拿到 `https://xxx.netlify.app`；要保留站点再注册 |
-| **Cloudflare Pages / Vercel** | 注册后新建项目，上传同一目录 | 免费额度足够；国内访问一般比 GitHub Pages 稳 |
-| **GitHub Pages** | 推仓库 → Settings → Pages 选分支与目录 | ⚠ **国内网络下 github.com 常被墙**（本机实测 `github.com` 与 `raw.githubusercontent.com` 超时，只有 `api.github.com` 偶尔通），放在最后考虑 |
-| **Gitee Pages** | 推 Gitee → 服务 → Gitee Pages | 国内快；需实名认证，且开通入口时有调整，以官网为准 |
-| **微信里打开** | 直接把网址发聊天/朋友圈 | 微信内置浏览器能正常打开，**不需要小程序账号、不需要备案、不需要服务器** |
+**https://1550167754-glitch.github.io/yiqiu-qiyuan/**
+
+部署方式：GitHub Pages，仓库 `1550167754-glitch/yiqiu-qiyuan`，发布源 **main 分支 /docs 目录**。
+发布产物就是 `docs/` 下那几个文件（`index.html` + `engine.bundle.js` + `app.js` +
+`style.css` + `favicon.svg` + `.nojekyll`），由 `node web/build.js` 自动铺好。
+
+> ⚠ **本机到 `github.com` 的 HTTPS 被阻断**（实测连续 3 次 21 秒超时），
+> 所以 `git push` 用不了。当前内容是通过 **GitHub Contents API**（`api.github.com` 稳定可达）
+> 逐个文件提交的，脚本见 `web/tests/gh-publish.js`。
+> 另外 SSH-over-443 通道是通的（`ssh.github.com:443`），但 GCM 的 OAuth token
+> 没有 `admin:public_key` 权限、传不了公钥；换一个有该权限的 token 后
+> `git push` 也能走通（把 `~/.ssh/config` 里 github.com 指向 ssh.github.com:443 即可）。
+
+### 发布产物在哪个目录
+
+`node web/build.js` 会同时产出两处，内容相同：
+
+| 目录 | 用途 |
+|---|---|
+| `web/dist/site/` | 手动拖拽上传（Netlify Drop 等）用，零子目录 |
+| `docs/` | GitHub Pages 用（Pages 只能选根目录或 `/docs`） |
+
+`docs/` 里原来的《开发日志.md》与网页产物**共存**，构建脚本只覆盖网页那几个固定文件名。
+
+### 其它可选的免费托管
+
+| 方式 | 备注 |
+|---|---|
+| **Netlify Drop** | 拖 `web/dist/site` 即可，**但匿名站点有密码保护且 1 小时后过期**，必须认领（注册）才公开 |
+| **Cloudflare Pages / Vercel** | 需注册；国内访问一般比 github.io 稳 |
+| **Gitee Pages** | ❌ **已停服**，不要再用 |
+| **微信里打开** | 直接把网址发聊天/朋友圈；微信内置浏览器能正常打开，**不需要小程序账号、不需要备案** |
 
 > 想再进微信小程序：`engine/` 这层可原样复用（不碰 DOM、也不碰 `wx`），
 > 只要写一个小程序 Canvas 2D 适配层（把 `boardview.js` / `xqview.js` 需要的 ctx 方法
