@@ -89,6 +89,16 @@ C_CANCEL = "#3A4256"
 
 BOARD_MARGIN = 34  # 棋盘在画布内的外边距：四周留白(画布到棋盘外框)，观感优雅且给坐标留位
 
+# ---------- 悔棋"倒退"动画参数 ----------
+# 落子是"啪"一下出现，悔棋反向做一段短动画：被撤销的棋子原地一亮，
+# 然后上浮 + 缩小 + 淡出，原地留一圈扩散涟漪；多子按"后下的先退"依次进行。
+UNDO_ANIM_STEP_MS = 14      # 每帧间隔（≈70fps，与象棋模块的 FRAME_MS 同量级）
+UNDO_ANIM_FRAMES = 12       # 每枚棋子的帧数（12×14ms ≈ 170ms/子）
+UNDO_ANIM_LIFT = 0.85       # 上浮距离 = 该值 × 棋子直径（以视觉半径为单位 1.7r）
+UNDO_ANIM_SCALE = 0.72      # 终点缩放（缩到原大小的 72%，形成"退回去"的收束感）
+UNDO_ANIM_GAP_MS = 40       # 多子之间的间隔
+UNDO_RIPPLE_FRAMES = 10     # 涟漪帧数
+
 # ---------- 启动页设计尺寸（scale=1.0 时的垂直预算，单位 px） ----------
 # 布局按「设计总高」等比缩放并垂直居中：窗口越大越大气，窗口小则整体收缩不溢出。
 APP_SUBTITLE = "六子棋 · 五子棋 · 中国象棋 · 经典对弈"
@@ -773,6 +783,11 @@ class Connect6GUI(tk.Tk):
         self._wr_mc_refined: set[int] = set()  # 已被异步(M C/搜索)精化过的曲线下标
         self._search_refresh_every = 5          # 每几步用搜索分值校正一次曲线
         self._wr_gen = 0                        # 对局代数，防止旧后台结果写回新局
+        # AI 落子代数：悔棋 / 重开时 +1，用来作废"还在后台算的旧结果"
+        # （旧结果基于撤销前的局面，落到撤销后的盘面上会下出错位的子）
+        self._ai_gen = 0
+        # 悔棋"倒退"动画状态（None = 未在播放）
+        self._undo_anim = None
 
         # 容器：两页堆叠
         self.container = tk.Frame(self, bg=C_MAIN)
@@ -1748,7 +1763,15 @@ class Connect6GUI(tk.Tk):
         self.selected = []
         self.thinking = False
         self._end_dialog_shown = False          # 新对局：重置终局弹窗标志
+        # 新对局：作废上一局可能还在后台跑的 AI 结果（否则旧线程会把子下到新盘上），
+        # 并中止其搜索；同时收掉可能还没播完的悔棋动画
+        self._ai_gen += 1
         self._reset_winrate()
+        try:
+            if getattr(self, "_undo_anim", None):
+                self._undo_anim_finish()
+        except Exception:
+            pass
         self._show_game()
         self._update_info()
         self._reset_step_ui()
@@ -2190,9 +2213,10 @@ class Connect6GUI(tk.Tk):
             return
         self.thinking = True
         self._set_thinking(True)
-        threading.Thread(target=self._ai_worker, daemon=True).start()
+        gen = self._ai_gen
+        threading.Thread(target=self._ai_worker, args=(gen,), daemon=True).start()
 
-    def _ai_worker(self):
+    def _ai_worker(self, gen: int = 0):
         def safe_schedule(fn):
             """把回调放入线程安全队列，由主线程轮询执行。
 
@@ -2207,10 +2231,28 @@ class Connect6GUI(tk.Tk):
         try:
             _lower_thread_priority()
             time.sleep(0.1)  # 让界面先刷新
-            stones = self.game.ai_turn(show_info=False)
-            safe_schedule(lambda: self._apply_ai_result(stones))
+            # 【悔棋竞态】AI 思考期间用户点了悔棋：这一步会轮询 _ai_gen，
+            # 发现换代就立刻放弃——绝不能让"基于撤销前局面算出的落子"
+            # 落到撤销后的盘面上（那会下出非法/错位的子，并打乱轮次）。
+            # 同时把 AI 自己的中止标志置位，让它不必算完整轮迭代加深
+            # （悔棋后要立刻重算，靠线程"自然结束"会让玩家白等好几秒）。
+            g = self.game
+            stones = None
+            if g is not None:
+                for _ in range(120):                     # 最多等 12 秒
+                    if gen != self._ai_gen or self.game is not g or g.finished:
+                        return                           # 结果作废，直接丢弃
+                    with g._ai_lock:
+                        if g.current_player().kind != "human":
+                            stones = g.ai_turn(show_info=False)
+                            break
+                    time.sleep(0.1)
+            if stones is None:
+                safe_schedule(lambda: self._apply_ai_result([], gen))
+                return
+            safe_schedule(lambda: self._apply_ai_result(stones, gen))
         except Exception as exc:
-            safe_schedule(lambda e=exc: self._apply_ai_error(e))
+            safe_schedule(lambda e=exc: self._apply_ai_error(e, gen))
 
     def _drain_bg_queue(self):
         """主线程：消费后台线程的结果队列并执行回调（每 100ms 一次）。"""
@@ -2237,7 +2279,9 @@ class Connect6GUI(tk.Tk):
             except Exception:
                 pass
 
-    def _apply_ai_result(self, stones):
+    def _apply_ai_result(self, stones, gen: int = 0):
+        if gen != self._ai_gen:
+            return                       # 过期结果（期间悔棋/重开了），整包丢弃
         self.thinking = False
         self._set_thinking(False)
         if self.game is None:
@@ -2268,7 +2312,9 @@ class Connect6GUI(tk.Tk):
             return
         self._schedule_ai_turn()
 
-    def _apply_ai_error(self, exc):
+    def _apply_ai_error(self, exc, gen: int = 0):
+        if gen != self._ai_gen:
+            return
         self.thinking = False
         self._set_thinking(False)
         self._set_status(f"AI 出错：{exc}")
@@ -2901,17 +2947,35 @@ class Connect6GUI(tk.Tk):
         threading.Thread(target=self._db_save_worker, args=(record,), daemon=True).start()
 
     def _db_save_worker(self, record):
-        """后台线程写库；结果回投主线程，成功/失败都给出可见反馈（不再静默）。"""
+        """后台线程写库；结果回投主线程，成功/失败都给出可见反馈（不再静默）。
+
+        【历史坑】这里原先写成 `db.connect()` 后**不看返回值**、接着
+        `db.save_game(...)`，最后无条件置 ok=True。而 Database.connect() 失败时
+        是"返回 False + available=False"（不抛异常），save_game 又会因
+        available=False 直接返回 None——于是界面上永远弹「对局已存档」，
+        数据库里一条记录都没有。连接失败必须当成失败。
+        """
         ok, err = False, ""
+        db = None
         try:
             db = Database()
-            db.connect()
-            db.save_game(record, record["moves"])
-            db.close()
-            ok = True
+            if not db.connect():
+                err = db.last_hint or db.last_error or "数据库未就绪"
+            else:
+                gid = db.save_game(record, record["moves"])
+                if gid is None:
+                    err = getattr(db, "last_error", "") or "写入语句未生效"
+                else:
+                    ok = True
         except Exception as exc:
             # 数据库未就绪时降级：不影响对弈，但必须让用户知道"这局没存上"
             err = str(exc).strip() or type(exc).__name__
+        finally:
+            try:
+                if db is not None:
+                    db.close()
+            except Exception:
+                pass
         try:
             self._bg_queue.put(lambda: self._on_save_done(ok, err))
         except Exception:
@@ -3067,12 +3131,34 @@ class Connect6GUI(tk.Tk):
     def _on_undo(self):
         if self.game is None or self.game.finished:
             return
-        # 人机模式：一次撤销整轮（AI 一步 + 我方一步），回到我方重新行棋；
-        # 双人 / AI 互弈：撤一轮。
+        if getattr(self, "_undo_anim", None):
+            return                                  # 动画进行中，忽略重复点击
+        board = self.game.board
+        if not board.history and not self.game.moves_log:
+            return                                  # 空盘：没有可悔的
         kinds = {p.kind for p in self.game.players.values()}
-        self.game.undo_round(to_human=("human" in kinds and "ai" in kinds))
+        to_human = ("human" in kinds and "ai" in kinds)
+
+        # ---- 先看"将要被撤掉的是哪些子" ----
+        # undo_round 是按轮整轮撤（人机=AI 一步 + 我方一步），所以动画要把
+        # 整轮的子都退掉，而不是只退最后一枚；这里在撤销**之前**预测。
+        ghosts = self._undo_pending_stones(to_human)
+
+        # ---- 真正的规则层撤销（逻辑立即生效，动画只是视觉表现） ----
+        # 先作废"正在跑的旧搜索"：①请求中止（省掉白等的几秒）②代数 +1
+        # （旧结果即使算完也会被 _apply_ai_result 丢弃）。
+        # 注意顺序：中止必须发生在 _ai_gen += 1 **之前**——之后动画收尾会起
+        # 新搜索线程，若在那之后再调 stop() 会把新搜索一起掐掉，AI 就会退化成
+        # "只算一两层"的软棋。
+        self._abort_ai_search()
+        # 持 AI 锁撤销：后台 AI 线程正在 ai_turn 里改棋盘时必须串行化，
+        # 否则 board.history 栈与 grid 会被两个线程同时改（下出错位的子）。
+        # 先请求中止再抢锁，所以这里不会久等。
+        with self.game._ai_lock:
+            self.game.undo_round(to_human=to_human)
+            self.thinking = False
+            self._ai_gen += 1
         self.selected = []
-        self.thinking = False
         self.sound.play("click")
         self._update_info()
         self._refresh_step_ui()
@@ -3080,8 +3166,197 @@ class Connect6GUI(tk.Tk):
         # 悔棋后曲线缩水到当前实际手数（由 _sync_winrate 在下次落子时增量补齐）
         self._wr_y = self._wr_y[: self.game.board.move_count]
         self._draw_winrate()
-        # 撤到的可能是 AI 轮（如开局 AI 先行被撤光）——重新调度，人类回合自动跳过
+
+        # ---- 倒退动画；结束后再让 AI 续走（避免幽灵与 AI 落子叠在一起） ----
+        if ghosts and self._start_undo_anim(ghosts):
+            return
         self._schedule_ai_turn()
+
+    def _abort_ai_search(self):
+        """请求中止双方 AI 引擎当前正在跑的搜索（悔棋 / 重开时用）。
+
+        引擎的中止标志是纯布尔量：设置后搜索会在下一个检查点收手。
+        结果本身一定被 _ai_gen 丢弃，所以即便"没来得及中止"也不会出错，
+        这里纯粹是为了不让玩家白等已经作废的计算。
+        """
+        if self.game is None:
+            return
+        for p in self.game.players.values():
+            eng = getattr(p, "engine", None)
+            stop = getattr(eng, "stop", None)
+            if callable(stop):
+                try:
+                    stop()
+                except Exception:
+                    pass
+
+    def _undo_pending_stones(self, to_human: bool) -> list[tuple[int, int, int]]:
+        """预测 undo_round 会撤掉哪些子，返回 [(x, y, color), ...]（落子先后序）。
+
+        与 game.undo_round 的取轮规则一致：从 moves_log 最后一轮开始收集；
+        to_human=True 时继续往前收，直到落子方是人类为止。
+        """
+        try:
+            log = list(self.game.moves_log)             # [(x, y, color, round), ...]
+            if not log:
+                return []
+            taken: list[tuple[int, int, int]] = []
+            cur = self.game.current
+            while log:
+                last_round = log[-1][3]
+                same = [m for m in log if m[3] == last_round]
+                taken = [(m[0], m[1], m[2]) for m in same] + taken
+                log = [m for m in log if m[3] != last_round]
+                if not to_human:
+                    break
+                cur = same[-1][2]                       # 该轮落子方
+                if self.game.players[cur].kind == "human":
+                    break
+            return taken
+        except Exception:
+            return []
+
+    def _start_undo_anim(self, stones: list[tuple[int, int, int]]) -> bool:
+        """播放"悔棋倒退"动画。
+
+        stones 为将被撤销的棋子（落子先后序）。返回 True 表示动画已接管，
+        调用方**不要**再立即调度 AI；动画结束回调里会补上。
+
+        结构：多枚棋子顺序播放（后下的先退），每枚 = 上浮 + 缩小 + 淡出的
+        幽灵帧 + 原地一圈扩散涟漪。全部画在画布最上层，结束后自删。
+        """
+        c = getattr(self, "board_canvas", None)
+        g = getattr(self, "_geom", None)
+        if c is None or not g or not stones:
+            return False
+        if not stonefx.available():
+            return False
+
+        # 落子先后序 → 撤销顺序（后下的先退）
+        order = list(reversed(stones))
+        frames = stonefx.ghost_frames(g["stone_r"], order[0][2],
+                                      frames=UNDO_ANIM_FRAMES,
+                                      end_scale=UNDO_ANIM_SCALE)
+        if not frames:
+            return False
+
+        self._undo_anim = {
+            "stones": order, "i": 0, "frames": frames,
+            "items": [], "job": None, "gen": getattr(self, "_wr_gen", 0),
+        }
+        # 动画期间：悔棋按钮置灰，避免连点导致撤多了
+        try:
+            if hasattr(self, "btn_undo"):
+                self.btn_undo.set_enabled(False)
+        except Exception:
+            pass
+        self._set_sel_hint("悔棋中…")
+        self._undo_anim_step()
+        return True
+
+    def _undo_anim_step(self):
+        """推进一帧：绘制当前棋子的幽灵图 + 涟漪，播完换下一枚。"""
+        st = getattr(self, "_undo_anim", None)
+        c = getattr(self, "board_canvas", None)
+        if st is None:
+            return
+        if c is None or not self.winfo_exists() or self.game is None:
+            self._undo_anim_finish()
+            return
+        # 换局 / 悔棋后又重开：直接收尾，别把旧动画画到新局上
+        if st["gen"] != getattr(self, "_wr_gen", 0):
+            self._undo_anim_finish()
+            return
+
+        g = self._geom
+        cell = g["cell"]; x0 = g["x0"]; y0 = g["y0"]; r = g["stone_r"]
+
+        if st["i"] >= len(st["stones"]):
+            self._undo_anim_finish()
+            return
+
+        x, y, col = st["stones"][st["i"]]
+        cx = x0 + x * cell
+        cy = y0 + y * cell
+        frames = st["frames"]
+        try:
+            # 清掉上一帧的幽灵（只删自己的项；_redraw_pieces 会清整个 stone 层，
+            # 所以幽灵必须**每次重画**，不能依赖它长期留在画布上）
+            for it in st["items"]:
+                c.delete(it)
+            st["items"] = []
+            k = st["k"] if "k" in st else 0
+            n = len(frames)
+            # 幽灵：上浮 + 缩小 + 淡出（帧图自带这些变化，这里只负责位移）
+            lift = UNDO_ANIM_LIFT * r * (k / float(max(1, n - 1)))
+            img_item = c.create_image(cx, cy - lift, image=frames[k],
+                                      tags="undo_anim")
+            st["items"].append(img_item)
+            # 涟漪：从落点向外扩散的一圈，颜色取自主题坐标色（浅色盘也可见）
+            if k < UNDO_RIPPLE_FRAMES:
+                rt = k / float(UNDO_RIPPLE_FRAMES)
+                rr = r * (0.55 + 1.35 * rt)
+                ring = c.create_oval(cx - rr, cy - rr, cx + rr, cy + rr,
+                                     outline=blend(self.theme.get("coord", C_ACCENT),
+                                                   self.theme["bg_a"], rt * 0.65),
+                                     width=max(1, int(2 - rt)), tags="undo_anim")
+                st["items"].append(ring)
+            c.tag_raise("undo_anim")
+        except Exception:
+            self._undo_anim_finish()
+            return
+
+        st["k"] = st.get("k", 0) + 1
+        if st["k"] >= len(frames):
+            st["k"] = 0
+            st["i"] += 1
+            # 这一枚退完了：删干净再等 gap 播下一枚
+            try:
+                for it in st["items"]:
+                    c.delete(it)
+                st["items"] = []
+            except Exception:
+                pass
+            if st["i"] >= len(st["stones"]):
+                self._undo_anim_finish()
+                return
+            st["job"] = self.after(UNDO_ANIM_GAP_MS, self._undo_anim_step)
+            return
+        st["job"] = self.after(UNDO_ANIM_STEP_MS, self._undo_anim_step)
+
+    def _undo_anim_finish(self):
+        """收尾：删掉动画层、恢复按钮、把 AI 续走补上。"""
+        st = getattr(self, "_undo_anim", None)
+        self._undo_anim = None
+        if st:
+            job = st.get("job")
+            if job:
+                try:
+                    self.after_cancel(job)
+                except Exception:
+                    pass
+            try:
+                self.board_canvas.delete("undo_anim")
+            except Exception:
+                pass
+        try:
+            if hasattr(self, "btn_undo"):
+                can = bool(self.game is not None and not self.game.finished
+                           and self.game.board.history)
+                self.btn_undo.set_enabled(can)
+        except Exception:
+            pass
+        self._set_sel_hint("")
+        # 撤到的可能是 AI 轮（如开局 AI 先行被撤光）——重新调度，人类回合自动跳过
+        try:
+            self._schedule_ai_turn()
+        except Exception:
+            pass
+        # AI 的落子回调会调 _redraw → stone 层重建，幽灵此时已自行删除，无残留
+        try:
+            self._refresh_step_ui()
+        except Exception:
+            pass
 
     def _on_pass(self):
         """人类只下 1 子后结束本回合（Connect6 允许每轮 1~2 子）。"""
@@ -3400,10 +3675,27 @@ class Connect6GUI(tk.Tk):
             pass
 
     def _pg_status_worker(self):
+        """后台探测数据库状态。
+
+        【历史坑】原先只看 `check_status()`（= 探 5432 端口是否可连），
+        端口通但账号密码错 / 库不存在时会报成"数据库已就绪"，用户以为
+        会自动存档，其实一条都存不上。这里先做端口探测决定要不要提示安装，
+        端口通再做一次**真实凭据探测**（Database.probe），只有真的能连上
+        才算就绪；连不上则把可执行建议一起带回来。
+        """
         try:
             st = check_status()
         except Exception:
             st = None
+        # 端口通 = 有服务在跑：进一步验证"凭据 + 库"是否真的可用
+        if st == STATUS_RUNNING and Database is not None:
+            try:
+                db = Database()
+                ok, err, hint = db.probe()
+                if not ok:
+                    st = ("auth_failed", err, hint)
+            except Exception as exc:
+                st = ("auth_failed", str(exc), "请检查数据库配置")
         try:
             self._pg_queue.put(st)
         except Exception:
@@ -3430,6 +3722,37 @@ class Connect6GUI(tk.Tk):
         if self._pg_prompt_shown:
             return
         self._pg_prompt_shown = True
+
+        # 端口通但连不上：账号/密码/库名不对——必须明确告知，不能谎报"已就绪"
+        if isinstance(status, tuple) and status and status[0] == "auth_failed":
+            err = status[1] if len(status) > 1 else ""
+            hint = status[2] if len(status) > 2 else ""
+            self._set_status("数据库连接失败：对局不会自动存档")
+            dlg = OrnateDialog(self, title="数据库连不上", width=500, height=430,
+                               subtitle="PostgreSQL 服务在运行，但登录失败")
+            dlg.place_body()
+            dlg.add_status_icon("warn")
+            dlg.add_text("检测到 PostgreSQL 服务正在运行，但按当前配置连不上，"
+                         "本局战绩将无法存档。\n\n"
+                         f"{hint}\n\n"
+                         "配置文件：config/database.ini", size=12,
+                         wraplength=440, pady=10)
+
+            def _open_cfg():
+                dlg.close()
+                try:
+                    os.startfile(resource("config", "database.ini", writable=True))
+                except Exception as exc:
+                    self._set_status(f"打开配置失败：{exc}")
+
+            def _skip():
+                dlg.close()
+
+            btns = [dlg.add_button("知道了", _skip, accent=False),
+                    dlg.add_button("打开配置文件", _open_cfg, accent=True)]
+            dlg.button_row(btns)
+            dlg.open()
+            return
 
         if status == STATUS_RUNNING:
             # 数据库已就绪：不打断启动，但给出**可见**反馈
@@ -3566,7 +3889,16 @@ class Connect6GUI(tk.Tk):
                               width=470, height=350)
             return
         try:
-            db = Database(); db.connect()
+            db = Database()
+            if not db.connect():
+                # connect() 失败是"返回 False"而非抛异常，必须显式处理，
+                # 否则会拿着未连接的 db 去查，最后只显示一句"暂无战绩记录"。
+                hint = db.last_hint or db.last_error or "数据库未连接"
+                self._info_dialog("战绩查询", f"连接数据库失败。\n\n{hint}\n\n"
+                                  "配置文件：config/database.ini",
+                                  subtitle="PostgreSQL", icon="warn",
+                                  width=520, height=400)
+                return
             stats = db.get_stats()
             db.close()
             lines = ["棋手          胜  负  平", "----------------------"]
@@ -3670,6 +4002,14 @@ class Connect6GUI(tk.Tk):
         except Exception:
             pass
         # 3) 取消挂起任务
+        # 悔棋倒退动画的帧任务挂在 _undo_anim 字典里，单独取消
+        try:
+            anim = getattr(self, "_undo_anim", None)
+            if anim and anim.get("job"):
+                self.after_cancel(anim["job"])
+            self._undo_anim = None
+        except Exception:
+            pass
         for job_attr in ("_music_job", "_timer_job", "_pg_wait_job", "_bg_job",
                          "_menu_anim_job", "_menu_redraw_job"):
             job = getattr(self, job_attr, None)

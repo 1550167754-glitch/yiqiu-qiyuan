@@ -82,9 +82,29 @@ def _find_services() -> list[str]:
     return [n for n in names if not (n in seen or seen.add(n))]
 
 
+def config_target() -> tuple[str, int]:
+    """从 config/database.ini 读出要探测的 (host, port)。
+
+    原先 check_status() 硬编码探测 localhost:5432：只要用户把库配到别的主机/端口，
+    程序就会误报"未安装 PostgreSQL"并弹安装引导。这里改为跟随配置。
+    读不到配置时才回退 localhost:5432。
+    """
+    try:
+        from .database import Database
+        params = Database()._read_config()
+        host = str(params.get("host") or "localhost")
+        # 0.0.0.0 / * 是"监听所有地址"，客户端要连回环
+        if host in ("0.0.0.0", "*", "::"):
+            host = "localhost"
+        return host, int(params.get("port") or 5432)
+    except Exception:
+        return "localhost", 5432
+
+
 def check_status() -> str:
-    """检测 PostgreSQL 当前状态。"""
-    if _port_open():
+    """检测 PostgreSQL 当前状态（按配置里的 host/port 探测）。"""
+    host, port = config_target()
+    if _port_open(host, port):
         return STATUS_RUNNING
     if _find_services():
         return STATUS_STOPPED

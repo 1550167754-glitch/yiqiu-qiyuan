@@ -83,7 +83,9 @@ def run_cli_game(mode: str, side: str, difficulty: str):
     from .database import Database
     db = None
     try:
-        db = Database(); db.connect()
+        db = Database()
+        if not db.connect():          # 失败是返回 False，不是抛异常
+            db = None
     except Exception:
         db = None
 
@@ -149,6 +151,8 @@ def show_stats_cli(db):
         for s in stats:
             print(f"{s.get('name', '?'):<8}"
                   f"{s.get('wins', 0):>4}{s.get('losses', 0):>4}{s.get('draws', 0):>4}")
+        if not stats:
+            print("（暂无战绩记录）")
     except Exception as exc:
         print(f"战绩查询失败：{exc}")
         print("  提示：请检查 config/database.ini 配置与 PostgreSQL 服务。")
@@ -158,10 +162,17 @@ def run_cli_menu(default_engine: str = "local"):
     from .database import Database
     db = None
     try:
-        db = Database(); db.connect()
-        print("数据库连接成功。")
-    except Exception:
-        print("（未连接数据库，战绩功能不可用）")
+        db = Database()
+        if db.connect():
+            print("数据库连接成功。")
+        else:
+            # 把"为什么连不上 + 该怎么办"直接打出来，别只说一句"不可用"
+            print(f"（未连接数据库，战绩功能不可用）："
+                  f"{db.last_hint or db.last_error or '原因未知'}")
+            db = None
+    except Exception as exc:
+        print(f"（未连接数据库：{exc}）")
+        db = None
 
     while True:
         ch = _menu()

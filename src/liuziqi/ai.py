@@ -1320,6 +1320,20 @@ class AI:
         except AttributeError:
             return 0
 
+    def stop(self) -> None:
+        """请求中止当前搜索（线程安全，设置一个布尔标志即可）。
+
+        用途：AI 在后台线程搜索时，玩家点了悔棋 / 重开——旧结果已作废，
+        没必要再算完。中止后 best_move 会尽快带着"当前已有最好着"返回，
+        调用方拿到结果直接丢弃即可（正确性由 GUI 的 _ai_gen 把关）。
+        注意 best_move 每次进入都会把该标志重置为 False，所以这里不需要
+        "清标志"的配对调用。
+        """
+        try:
+            self.engine._stop = True
+        except Exception:
+            pass
+
     @property
     def last_val(self) -> float:
         """最近一次搜索的根分值（供 GUI 胜率曲线第 6 阶段校正用）。"""

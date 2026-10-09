@@ -78,7 +78,29 @@
 - **打包运行**：先跑 `build_exe.bat` 生成 `dist\六子棋\六子棋.exe`，双击即可。
 - **命令行对弈**：`python -m src.liuziqi.main --cli`。
 
-## 四、打包
+### PostgreSQL 战绩存档（可选）
+
+不装数据库也能正常对弈，只是"自动存档 / 战绩查询"不可用。要让存档生效：
+
+1. 双击项目根目录的 **`一键修复PostgreSQL.cmd`**（会弹 UAC，需管理员权限）。
+   它自动完成：设置数据库密码 → 建库 `connect6` → 建表 → 写回
+   `config\database.ini` → 用程序自己的代码复验连接。
+2. 想手动确认状态：`python scripts\测试数据库连接.py`
+   （打印连接参数、连接结果、三张表的行数、最近对局；失败会给出可执行建议）。
+
+> `config\database.ini` 必须存为 **UTF-8 无 BOM**：带 BOM 会让 Python 的
+> configparser 报 `File contains no section headers`，数据库功能会**静默失效**
+> （界面照旧显示"已存档"，其实一条没写进去）。段名用 `[postgres]`
+> （`[postgresql]` 也兼容）。
+
+## 四、测试
+
+```bat
+pytest                              # 正式回归（见 pyproject.toml）
+python scripts\运行测试.py           # 没装 pytest 时的兜底跑手
+```
+
+## 五、打包
 
 ```bat
 build_exe.bat
@@ -88,8 +110,10 @@ build_exe.bat
 - 全部资源通过 `--add-data` 内嵌；同时复制一份到 exe 同目录 `assets\`、`config\`，
   便于用户放入自定义音乐或修改配置，二者以 exe 同目录为准。
 
-## 五、技术要点
+## 六、技术要点
 
 - 仅标准库 + tkinter；PostgreSQL / 大模型为可选，未就绪自动降级，不影响对弈。
 - 默认不限时（休闲对弈）；AI 落子在工作线程计算，主线程保持流畅（16GB 内存友好）。
 - 两步落子 + 胜率曲线均在 GUI 层实现，引擎层（board/ai/game）不受影响，可独立复用。
+- 悔棋带**倒退动画**：被撤销的棋子按"后下的先退"逐枚上浮 + 缩小 + 淡出，
+  原地留一圈扩散涟漪；AI 思考期间悔棋会中止并作废旧搜索结果（代数校验 + 棋盘锁）。

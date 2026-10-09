@@ -33,7 +33,7 @@ _PIL_OK = _bf._PIL_OK
 _TK_OK = _bf._TK_OK
 
 if _PIL_OK:
-    from PIL import Image, ImageDraw, ImageChops
+    from PIL import Image, ImageDraw, ImageChops, ImageFilter
 
 try:
     from PIL import ImageTk
@@ -204,6 +204,61 @@ def get_stone_photo(canvas, r, col):
         _CACHE.clear()
     _CACHE[key] = ph
     return ph
+
+
+# --------------------------------------------------------------- 悔棋倒退动画
+_GHOST_CACHE: dict = {}
+
+
+def _scale_ghost(img, factor):
+    """把棋子图按比例缩放（LANCZOS，边缘依旧抗锯齿）。"""
+    w, h = img.size
+    nw, nh = max(2, int(round(w * factor))), max(2, int(round(h * factor)))
+    return img.resize((nw, nh), Image.LANCZOS)
+
+
+def ghost_frames(r, col, frames=12, end_scale=0.72, fade=0.90):
+    """生成"棋子退场"用的逐帧图像（RGBA 列表，供 ImageTk 逐帧显示）。
+
+    与落子相反的过程：棋子越升越高、越小、越透明，最后一帧几乎消失。
+    返回 [] 表示环境不支持（调用方直接跳过动画，不影响悔棋本身）。
+
+    每帧都做一次高斯模糊：轻微的"拖影/虚化"让动画读起来像"被抽走"，
+    而不是生硬地缩小——模糊半径随透明度一起增长。
+    """
+    if not _PIL_OK:
+        return []
+    ck = "black" if str(col).lower().startswith("b") or col == 1 else "white"
+    rq = max(2, int(round(float(r))))
+    key = (rq, ck, int(frames), round(float(end_scale), 3), round(float(fade), 3))
+    hit = _GHOST_CACHE.get(key)
+    if hit is not None:
+        return hit
+
+    base = render_stone(rq, ck)
+    if base is None:
+        return []
+    out = []
+    n = max(2, int(frames))
+    for i in range(n):
+        t = i / float(n - 1)                      # 0 → 1
+        f = 1.0 + (float(end_scale) - 1.0) * t    # 1.0 → end_scale
+        img = _scale_ghost(base, f)
+        alpha = max(0.0, 1.0 - float(fade) * t)
+        ch = img.split()[3].point(lambda v, a=alpha: int(v * a))
+        if t > 0:
+            blur = max(0.0, rq * 0.10 * t)
+            if blur >= 0.4:
+                ch = ch.filter(ImageFilter.GaussianBlur(blur))
+        img.putalpha(ch)
+        try:
+            out.append(ImageTk.PhotoImage(img))
+        except Exception:
+            return []
+    if len(_GHOST_CACHE) > 24:
+        _GHOST_CACHE.clear()
+    _GHOST_CACHE[key] = out
+    return out
 
 
 def available():

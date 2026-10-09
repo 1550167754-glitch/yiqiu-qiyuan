@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F2430">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>弈趣棋苑 · 六子棋 / 五子棋 / 中国象棋</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ================= 顶部栏 ================= -->
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">弈</span>
+    <div>
+      <h1>弈趣棋苑</h1>
+      <p>六子棋 · 五子棋 · 中国象棋</p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab is-on" data-page="play">对局</button>
+    <button class="tab" data-page="records">战绩</button>
+    <button class="tab" data-page="help">规则</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ================= 对局页 ================= -->
+  <section id="page-play" class="page is-on">
+    <div class="layout">
+
+      <!-- 左：棋盘 -->
+      <div class="boardwrap">
+        <canvas id="board"></canvas>
+        <div id="overlay" class="overlay is-hidden">
+          <div class="spinner"></div>
+          <span id="overlayText">AI 思考中…</span>
+        </div>
+        <div id="banner" class="banner is-hidden"></div>
+      </div>
+
+      <!-- 右：侧栏 -->
+      <aside class="sidebar">
+        <div class="card">
+          <h2>对局设置</h2>
+          <label class="row"><span>棋种</span>
+            <select id="variant">
+              <option value="connect6">六子棋（19×19 连六）</option>
+              <option value="gomoku">五子棋（15×15 连五）</option>
+              <option value="xiangqi">中国象棋（9×10）</option>
+            </select>
+          </label>
+          <label class="row"><span>模式</span>
+            <select id="mode">
+              <option value="human_ai">人机对战</option>
+              <option value="human_human">本地双人</option>
+            </select>
+          </label>
+          <label class="row" id="rowSide"><span>我执</span>
+            <select id="side">
+              <option value="black">黑（先手）</option>
+              <option value="white">白（后手）</option>
+            </select>
+          </label>
+          <label class="row" id="rowDiff"><span>AI 难度</span>
+            <select id="difficulty">
+              <option value="easy">简单</option>
+              <option value="medium">中等</option>
+              <option value="hard">困难</option>
+            </select>
+          </label>
+          <label class="row"><span>棋盘主题</span>
+            <select id="theme"></select>
+          </label>
+          <button id="btnNew" class="btn primary">开始新对局</button>
+        </div>
+
+        <div class="card">
+          <h2>对局状态</h2>
+          <div class="status">
+            <div class="line"><span id="lblTurn">—</span></div>
+            <div class="line dim" id="lblStep">—</div>
+            <div class="line dim" id="lblMove">—</div>
+          </div>
+          <div class="actions">
+            <button id="btnConfirm" class="btn ok" disabled>确认落子</button>
+            <button id="btnPass" class="btn" disabled>结束本回合</button>
+            <button id="btnUndo" class="btn">悔棋</button>
+            <button id="btnResign" class="btn danger">认输</button>
+          </div>
+          <p class="hint" id="hint">点击棋盘选点，选满自动落子；也可选 1 子后点「结束本回合」。</p>
+        </div>
+
+        <div class="card" id="cardRecord" hidden>
+          <h2>本局棋谱</h2>
+          <div class="moves" id="moves"></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================= 战绩页 ================= -->
+  <section id="page-records" class="page">
+    <div class="narrow">
+      <div class="card">
+        <h2>棋手战绩</h2>
+        <table class="table" id="statTable">
+          <thead><tr><th>棋手</th><th>类型</th><th>胜</th><th>负</th><th>平</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="hint">数据保存在本机浏览器（localStorage），不上传服务器。</p>
+      </div>
+      <div class="card">
+        <h2>最近对局</h2>
+        <div id="gameList" class="gamelist"></div>
+        <button id="btnClear" class="btn danger small">清空全部战绩</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 规则页 ================= -->
+  <section id="page-help" class="page">
+    <div class="narrow">
+      <div class="card">
+        <h2>六子棋 Connect6</h2>
+        <ul class="rules">
+          <li>19×19 棋盘，黑先；<b>黑方第一轮只下 1 子</b>，之后每轮双方各下 1~2 子。</li>
+          <li>横、竖、斜任一方向连成 <b>6 子</b>即胜。</li>
+          <li>常见棋型：4 连两端开放（活四）→ 补一头成活五，两端都能成六，对手堵不完即必胜。</li>
+        </ul>
+        <h2>五子棋 Gomoku</h2>
+        <ul class="rules">
+          <li>15×15 棋盘，黑先；每轮双方各下 <b>1 子</b>；连成 <b>5 子</b>即胜。</li>
+        </ul>
+        <h2>中国象棋 Xiangqi</h2>
+        <ul class="rules">
+          <li>红先。完整规则：马蹩腿、象塞眼、炮隔子吃、兵过河可平移、将帅不可照面。</li>
+          <li>将死或困毙（无合法着法）均判负。</li>
+        </ul>
+        <h2>操作说明</h2>
+        <ul class="rules">
+          <li><b>两步落子</b>：先点棋盘选点（虚线预览），再点「确认落子」。</li>
+          <li><b>悔棋</b>：人机模式一次撤掉「AI 一轮 + 我方一轮」，回到我方行棋；带倒退动画。</li>
+          <li>快捷键：<b>Enter</b> 确认落子、<b>Esc</b> 取消选择。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>弈趣棋苑 · 网页版</span>
+  <span class="dim">纯前端运行，无需服务器；棋谱与战绩保存在本机</span>
+</footer>
+
+<!-- 引擎打包产物：浏览器里通过全局 E 取用（E.board / E.game / E.ai / E.xiaqi …） -->
+<script src="dist/engine.bundle.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

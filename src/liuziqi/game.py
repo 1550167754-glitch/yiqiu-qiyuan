@@ -15,6 +15,8 @@ game.py —— 对局流程控制模块（状态机）
 """
 from __future__ import annotations
 
+import threading
+
 from .board import Board, BLACK, WHITE, OPPOSITE, COLOR_NAMES, SIZE, WIN_COUNT
 from .ai import AI
 from .llm_ai import LLMAI
@@ -95,6 +97,10 @@ class Game:
         self.reason = ""
         self.moves_log = []          # 每项: (x, y, color, round_no)
         self.last_ai_stones = []     # AI 本轮落下的子
+        # AI 行棋锁：AI 在后台线程里直接改棋盘，而悔棋在主线程撤子。
+        # 两者若同时进 board.place/undo，栈与 grid 会互相踩（下出错位的子）。
+        # GUI 的 AI 工作线程在调用 ai_turn 前持有它，悔棋前也会短暂持有。
+        self._ai_lock = threading.RLock()
 
         self.time_total = max(0, int(time_total))
         self.time_per_move = max(0, int(time_per_move))
