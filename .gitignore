@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -28,8 +28,7 @@ end_dialog_error.log
 assets/music/
 
 # ---- 第三方引擎二进制（Pikafish NNUE，72MB，不进库；自行下载放入 engine/） ----
-engine/
-
+/engine/
 # ---- 工具/元数据目录：不进版本库 ----
 .workbuddy/
 .slidep/
