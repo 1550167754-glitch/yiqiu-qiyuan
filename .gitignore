@@ -33,3 +33,6 @@ engine/
 # ---- 工具/元数据目录：不进版本库 ----
 .workbuddy/
 .slidep/
+
+# GitHub 凭据管理器诊断日志（含本机路径等环境信息，不入库）
+gcm-diagnose.log
