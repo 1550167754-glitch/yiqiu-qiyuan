@@ -87,10 +87,12 @@
       o.connect(g); g.connect(c.destination);
       o.start(t0); o.stop(t0 + dur + 0.02);
     }
-    function play(kind) {
+    // delayMs：延后触发（同轮两枚落子错峰用）。走 AudioContext 时钟调度，
+    // 比 setTimeout 更准，且在合成器内部排队，不影响静音/无音频环境的分支。
+    function play(kind, delayMs) {
       if (muted()) return;
       var c = actx(); if (!c) return;
-      var t0 = c.currentTime + 0.01;
+      var t0 = c.currentTime + 0.01 + (delayMs ? delayMs / 1000 : 0);
       if (kind === 'move') { knock(c, t0, 1500, 0.32); thump(c, t0, 210, 85, 0.28, 0.10); }
       else if (kind === 'capture') { knock(c, t0, 950, 0.48); thump(c, t0, 165, 70, 0.40, 0.13); }
       else if (kind === 'select') { knock(c, t0, 2100, 0.14); }
@@ -190,9 +192,13 @@
         if (kind && bd.inCheck(side)) fx.check = { x: kind[0], y: kind[1] };
         xqView.render(ctx, bd, fx, themeName);
       } else {
+        // 出生动画期间：动画中的那几枚子从 history 层摘掉（它们已在盘上），
+        // 改由 ghosts 层按 birth 进度画缩放入场，否则会出现"整子+缩放影子"重影。
+        var hist = game.board.history;
+        var skip = (anim && anim.type === 'birth' && anim.stones) ? anim.stones.length : 0;
         var st = {
-          history: game.board.history,
-          last: game.board.history.length ? game.board.history[game.board.history.length - 1] : null,
+          history: skip ? hist.slice(0, hist.length - skip) : hist,
+          last: skip ? null : (hist.length ? hist[hist.length - 1] : null),
           selected: selected,
           winLine: game.winLine || null,
           ghosts: extraGhosts || (anim ? anim.ghosts : null)
@@ -277,7 +283,10 @@
       ? (mode === 'human_human' ? (side === BLACK ? '黑方（玩家1）' : '白方（玩家2）') : '我')
       : 'AI（' + diffLabel(difficulty) + '）';
     if (human) return new G.Player(name, 'human');
-    return new G.Player(name, 'ai', difficulty, new A.AI(difficulty, Date.now() % 100000));
+    var seed = Date.now() % 100000;
+    var p = new G.Player(name, 'ai', difficulty, new A.AI(difficulty, seed));
+    p.seed = seed;                 // Worker 搜索要按同一把种子重建 AI
+    return p;
   }
 
   /** 象棋棋手（'r'/'b' 执色）。 */
@@ -289,7 +298,8 @@
       ? (mode === 'human_human' ? (side === XQ_RED ? '红方（玩家1）' : '黑方（玩家2）') : '我')
       : 'AI（' + diffLabel(difficulty) + '）';
     if (human) return { name: name, kind: 'human', engine: null };
-    return { name: name, kind: 'ai', engine: new X.XqAI(difficulty, Date.now() % 100000) };
+    var seed2 = Date.now() % 100000;
+    return { name: name, kind: 'ai', engine: new X.XqAI(difficulty, seed2), seed: seed2, difficulty: difficulty };
   }
 
   // ---------------------------------------------------------------- 状态显示
@@ -487,6 +497,46 @@
     }, themeName);
   }
 
+  /**
+   * 连珠类落子入场动画（玩家确认落子 / AI 落子通用）。
+   * 调用时机同样是"落子已生效之后"：新子 150~180ms 缩放入场（0→1 带轻微过冲），
+   * 同轮多枚按 85ms 错峰出生，音效同步错峰。期间输入被 anim 拦截，
+   * 回调推迟到全部出生完毕（对齐象棋 slide 的做法）。
+   * 绘制约定见 boardview.js drawFx 的 birth 形态；悔棋动画路径不受影响。
+   */
+  function playBirth(stones, done) {
+    if (!stones || !stones.length) { paint(); if (done) done(); return; }
+    for (var s = 0; s < stones.length; s++) Sfx.play('move', s * 85);
+    var DUR = 170;          // 单枚入场时长
+    var GAP = 85;           // 多枚错峰间隔（与音效一致）
+    var total = stones.length * DUR + (stones.length - 1) * GAP;
+    anim = {
+      type: 'birth', stones: stones,
+      started: performance.now(), dur: DUR, gap: GAP,
+      ghosts: stones.map(function (p) {
+        return { x: p.x, y: p.y, color: p.color, birth: 0 };
+      }),
+      raf: 0
+    };
+    function tick(now) {
+      if (!anim || anim.type !== 'birth') return;
+      var el = now - anim.started;
+      for (var k = 0; k < stones.length; k++) {
+        var local = el - k * GAP;
+        anim.ghosts[k].birth = local <= 0 ? 0 : Math.min(1, local / DUR);
+      }
+      paint();
+      if (el < total) {
+        anim.raf = requestAnimationFrame(tick);
+      } else {
+        anim = null;
+        paint();
+        if (done) done();
+      }
+    }
+    anim.raf = requestAnimationFrame(tick);
+  }
+
   function onBoardClick(ev) {
     if (!game || game.finished || thinking || anim) return;
     if (!isHumanTurn()) return;
@@ -517,26 +567,30 @@
   }
 
   function confirmStones() {
-    if (!game || !isHumanTurn() || !selected.length) return;
+    if (!game || !isHumanTurn() || !selected.length || anim) return;
     var picks = selected.slice();
     selected = [];
-    var placed = 0;
+    var color = game.current;
+    var placed = [];
     for (var i = 0; i < picks.length; i++) {
       var r = game.place(picks[i].x, picks[i].y);
-      if (!r.ok) break;
-      placed += 1;
+      if (!r.ok) break;              // 被拒不响（音效只在成功落子时播）
+      placed.push({ x: picks[i].x, y: picks[i].y, color: color });
       if (r.line) break;
     }
-    paint();
-    updateStatus();
-    refreshButtons();
-    if (game.finished) { finishGame(); return; }
-    // 本轮下满 → 结束回合，换手
-    if (game.stonesThisRound >= game.maxStones) {
+    refreshButtons();                // 动画期间先禁掉确认/悔棋
+    // 本轮下满 → 结束回合，换手（先换手再播动画，AI 调度推迟到动画结束）
+    var endedRound = false;
+    if (!game.finished && game.stonesThisRound >= game.maxStones) {
       game.endRound();
-      updateStatus();
+      endedRound = true;
     }
-    maybeAiTurn();
+    playBirth(placed, function () {
+      updateStatus();
+      refreshButtons();
+      if (game.finished) { finishGame(); return; }
+      maybeAiTurn();                 // 动画结束才轮到 AI 调度
+    });
   }
 
   function passRound() {
@@ -550,11 +604,161 @@
   }
 
   // ---------------------------------------------------------------- AI
+  // 「思考中」从全屏遮罩改为棋盘右上角小型徽标：
+  // 复用 overlay 元素与 id（apptest 假 DOM 只认现有 id），角落化完全靠内联样式
+  // 覆盖 .overlay 的居中/半透明底（style.css / index.html 不动，见协作分工）。
+  // display 不动内联——.is-hidden{display:none} 的隐藏开关必须继续生效。
   function showOverlay(text) {
+    var s = overlay.style;
+    s.top = '10px'; s.right = '10px'; s.bottom = 'auto'; s.left = 'auto';
+    s.width = 'auto'; s.height = 'auto';
+    s.background = 'rgba(24,28,36,0.86)';
+    s.color = '#F2E8D5';
+    s.borderRadius = '999px';
+    s.padding = '5px 14px';
+    s.fontSize = '13px';
+    s.boxShadow = '0 2px 10px rgba(0,0,0,0.35)';
+    s.pointerEvents = 'none';
     overlayText.textContent = text || 'AI 思考中…';
     overlay.classList.remove('is-hidden');
   }
   function hideOverlay() { overlay.classList.add('is-hidden'); }
+
+  // ------------------------------------------------ Worker（后台搜索，失败自动回退同步）
+  // 优先把 AI 搜索交给 Worker（不阻塞主线程，向 exe 版响应手感看齐）；
+  // 探测失败（构造抛错 / onerror / 首次 ping 3s 无响应）→ 永久回退现有同步路径。
+  // aiGen 代数令牌语义保持：结果回来时 gen 不符即丢弃；悔棋/重开作废在途结果。
+  var worker = { w: null, broken: false, seq: 0, pending: null, pingTimer: null };
+
+  function killWorker() {
+    if (worker.pending && worker.pending.timer) clearTimeout(worker.pending.timer);
+    worker.pending = null;
+    if (worker.pingTimer) { clearTimeout(worker.pingTimer); worker.pingTimer = null; }
+    if (worker.w) { try { worker.w.terminate(); } catch (e) { } worker.w = null; }
+  }
+
+  /** 组装一次 AI 求解请求（主线程快照局面，worker 里重建）。返回 null 表示无法用 worker。 */
+  function buildWorkerRequest() {
+    if (worker.broken || !game || game.finished) return null;
+    var cur = game.currentPlayer();
+    if (!cur || cur.kind !== 'ai') return null;
+    var diff = cur.difficulty || difficulty;
+    var seed = (typeof cur.seed === 'number') ? cur.seed : (Date.now() % 100000);
+    if (isXiangqi()) {
+      var bd = game.board;
+      var grid = [];
+      for (var y = 0; y < X.ROWS; y++) {
+        var row = [];
+        for (var x = 0; x < X.COLS; x++) {
+          var p = bd.grid[y][x];
+          row.push(p ? [p[0], p[1]] : null);
+        }
+        grid.push(row);
+      }
+      return { variant: 'xiangqi', difficulty: diff, seed: seed, payload: { grid: grid, turn: bd.turn } };
+    }
+    var b = game.board;
+    return {
+      variant: variant, difficulty: diff, seed: seed,
+      payload: {
+        size: b.size, winCount: b.winCount,
+        moves: b.history.map(function (m) { return [m[0], m[1], m[2]]; }),
+        maxStones: game.maxStones
+      }
+    };
+  }
+
+  function handleWorkerResult(msg) {
+    var p = worker.pending;
+    if (!p || p.id !== msg.id) return;   // 过期/已被悔棋作废的在途结果：直接丢弃
+    worker.pending = null;
+    if (p.timer) clearTimeout(p.timer);
+    if (msg.error) {                     // worker 内部异常：永久回退同步，本次同步补算
+      worker.broken = true;
+      killWorker();
+      p.cb(null);
+      return;
+    }
+    p.cb(msg);
+  }
+
+  function failPending() {
+    var p = worker.pending;
+    if (!p) return;
+    worker.pending = null;
+    if (p.timer) clearTimeout(p.timer);
+    p.cb(null);
+  }
+
+  /** 懒建 Worker：候选路径依次探测（源码 dist/ 结构、发布平铺结构），ping 3s 超时换下一个。 */
+  function ensureWorker(cb) {
+    if (worker.broken) { cb(null); return; }
+    if (worker.w) { cb(worker.w); return; }
+    if (typeof Worker === 'undefined') { worker.broken = true; cb(null); return; }
+    var urls = ['dist/engine.worker.js', 'engine.worker.js'];
+    var idx = 0;
+    function dropCurrent(next) {
+      if (worker.pingTimer) { clearTimeout(worker.pingTimer); worker.pingTimer = null; }
+      if (worker.w) { try { worker.w.terminate(); } catch (e) { } worker.w = null; }
+      if (next) next();
+    }
+    function tryNext() {
+      if (idx >= urls.length) { worker.broken = true; cb(null); return; }
+      var w;
+      try { w = new Worker(urls[idx++]); } catch (e) { tryNext(); return; }
+      worker.w = w;
+      var settled = false;               // ping 是否已确认可用
+      w.onerror = function () {
+        if (worker.w !== w) return;
+        if (!settled) { dropCurrent(tryNext); }          // 探测期：换下一个候选
+        else { worker.broken = true; dropCurrent(null); failPending(); }
+      };
+      w.onmessage = function (ev) {
+        var msg = ev.data || {};
+        if (msg.id === 0) {                              // ping 应答
+          if (settled) return;
+          settled = true;
+          if (worker.pingTimer) { clearTimeout(worker.pingTimer); worker.pingTimer = null; }
+          cb(worker.w);
+          return;
+        }
+        handleWorkerResult(msg);
+      };
+      try { w.postMessage({ id: 0, variant: 'ping' }); }
+      catch (e2) { dropCurrent(tryNext); return; }
+      worker.pingTimer = setTimeout(function () {
+        worker.pingTimer = null;
+        if (worker.w === w && !settled) dropCurrent(tryNext);   // 3s 无响应 → 换下一个
+      }, 3000);
+    }
+    tryNext();
+  }
+
+  /** 把一次 AI 求解交给 worker。成功 cb({move}|{stones})，不可用/失败 cb(null) 走同步。 */
+  function workerCompute(req, cb) {
+    ensureWorker(function (w) {
+      if (!w) { cb(null); return; }
+      var id = ++worker.seq;
+      worker.pending = {
+        id: id, cb: cb,
+        timer: setTimeout(function () {
+          // 计算超时（难档长搜）：作废本次在途结果、同步补算；不销毁 worker，
+          // 迟到的结果因 id 不符会被丢弃，绝不重复落子、绝不卡死。
+          if (worker.pending && worker.pending.id === id) {
+            worker.pending = null;
+            cb(null);
+          }
+        }, 45000)
+      };
+      try {
+        w.postMessage({ id: id, variant: req.variant, difficulty: req.difficulty, seed: req.seed, payload: req.payload });
+      } catch (e) {
+        worker.broken = true;
+        killWorker();
+        cb(null);
+      }
+    });
+  }
 
   function maybeAiTurn() {
     if (!game || game.finished) return;
@@ -564,14 +768,12 @@
     refreshButtons();
     showOverlay('AI 思考中（' + diffLabel(difficulty) + '）…');
     var gen = aiGen;
-    var eng = game.currentPlayer().engine;
-    // 先让浏览器画一帧（显示"思考中"），再同步搜索。
-    // 搜索是纯计算的循环，无法中途让出主线程；先渲染可避免"界面像卡死"。
-    requestAnimationFrame(function () {
-      setTimeout(function () {
-        // 【易错点】下面两条"作废返回"都必须先 refreshButtons()：
-        // 否则 thinking 虽然清了，按钮与提示仍是"AI 思考中"的那一套，
-        // 界面看起来永久卡住（实测踩过：悔棋打断 AI 后按钮再也不亮）。
+    var req = buildWorkerRequest();
+
+    if (req) {
+      workerCompute(req, function (res) {
+        // 【易错点】"作废返回"必须先 thinking=false、refreshButtons()：
+        // 否则按钮与提示停留在"AI 思考中"那套，界面看起来永久卡住。
         if (gen !== aiGen || !game || game.finished) {
           thinking = false;
           hideOverlay();
@@ -579,51 +781,128 @@
           refreshButtons();
           return;
         }
-        // 象棋走一步、连珠类走 1~2 子，分支处理（引擎接口本来就不同）
-        var aiStones = null;
-        if (isXiangqi()) {
-          aiStones = game.aiTurn();
-        } else {
-          var stones = eng ? eng.getMove(game.board, game.current, game.maxStones) : [];
-          for (var i = 0; i < stones.length; i++) {
-            var r = game.place(stones[i][0], stones[i][1]);
-            if (!r.ok) break;
-            if (r.line) break;
-          }
-          game.endRound();     // 无论落子成败都要换手，否则会卡在"AI 该走却轮不到人"
-          aiStones = stones;
-        }
-        thinking = false;
-        hideOverlay();
-        if (gen !== aiGen) {                    // 期间悔棋/重开了，结果作废
-          updateStatus();
-          refreshButtons();
-          return;
-        }
-        if (isXiangqi() && (!aiStones || !aiStones.length)) {
-          // 象棋 AI 无着可走（理论不该发生）：判终局，绝不卡死
+        if (res) { applyAiResult(req, res, gen); return; }
+        // Worker 不可用：先让浏览器画一帧（徽标已显示），再走同步回退
+        requestAnimationFrame(function () {
+          setTimeout(function () { syncAiTurn(gen); }, 40);
+        });
+      });
+    } else {
+      // 无 Worker（环境不支持/已永久回退）：先渲染再同步搜索，避免"界面像卡死"
+      requestAnimationFrame(function () {
+        setTimeout(function () { syncAiTurn(gen); }, 40);
+      });
+    }
+  }
+
+  /** 同步回退路径（与 Worker 化之前行为完全一致），仅当 Worker 不可用时走到这里。 */
+  function syncAiTurn(gen) {
+    // 【易错点】下面这条"作废返回"必须先 refreshButtons()：
+    // 否则 thinking 虽然清了，按钮与提示仍是"AI 思考中"的那一套，
+    // 界面看起来永久卡住（实测踩过：悔棋打断 AI 后按钮再也不亮）。
+    if (gen !== aiGen || !game || game.finished) {
+      thinking = false;
+      hideOverlay();
+      if (game && !game.finished) { updateStatus(); }
+      refreshButtons();
+      return;
+    }
+    var aiStones = null;
+    var aiPlaced = [];
+    if (isXiangqi()) {
+      aiStones = game.aiTurn();
+    } else {
+      var eng = game.currentPlayer().engine;
+      var stones = eng ? eng.getMove(game.board, game.current, game.maxStones) : [];
+      var color = game.current;
+      for (var i = 0; i < stones.length; i++) {
+        var r = game.place(stones[i][0], stones[i][1]);
+        if (!r.ok) break;
+        aiPlaced.push({ x: stones[i][0], y: stones[i][1], color: color });
+        if (r.line) break;
+      }
+      game.endRound();     // 无论落子成败都要换手，否则会卡在"AI 该走却轮不到人"
+      aiStones = stones;
+    }
+    thinking = false;
+    hideOverlay();
+    if (gen !== aiGen) {                    // 期间悔棋/重开了，结果作废
+      updateStatus();
+      refreshButtons();
+      return;
+    }
+    if (isXiangqi() && (!aiStones || !aiStones.length)) {
+      // 象棋 AI 无着可走（理论不该发生）：判终局，绝不卡死
+      game.finished = true;
+      game.reason = 'AI 无着可走';
+    }
+    afterAiMoved(aiStones, aiPlaced, gen);
+  }
+
+  /** 把 worker 回传的着法应用到真实对局（gen 令牌保证局面自请求以来未被改动）。 */
+  function applyAiResult(req, res, gen) {
+    var aiStones = null;
+    var aiPlaced = [];
+    if (req.variant === 'xiangqi') {
+      var mv = res.move;
+      if (mv) {
+        // 与 XiangqiGame.aiTurn 的应用逻辑逐行同源（apply → 记谱 → 判将死）
+        game.board.apply([mv[0], mv[1]], [mv[2], mv[3]], true);
+        game.movesLog.push(mv);
+        if (game.board.gameOver) {
           game.finished = true;
-          game.reason = 'AI 无着可走';
+          game.winner = game.board.winner === XQ_RED ? XQ_RED : XQ_BLACK;
+          game.reason = '将死';
         }
-        // 象棋 AI 的着子带滑动动画；动画结束再刷新状态并连锁下一步
-        if (isXiangqi() && aiStones && aiStones.length) {
-          playSlide(function () {
-            if (gen !== aiGen) { updateStatus(); refreshButtons(); return; }
-            paint();
-            updateStatus();
-            refreshButtons();
-            if (game.finished) { finishGame(); return; }
-            if (game.board.checkFlag) Sfx.play('check');
-            maybeAiTurn();                        // 连锁：机机/观战模式
-          });
-          return;
-        }
+        aiStones = [[mv[0], mv[1]], [mv[2], mv[3]]];
+      }
+    } else {
+      var stones = res.stones || [];
+      var color = game.current;
+      for (var i = 0; i < stones.length; i++) {
+        var r = game.place(stones[i][0], stones[i][1]);
+        if (!r.ok) break;
+        aiPlaced.push({ x: stones[i][0], y: stones[i][1], color: color });
+        if (r.line) break;
+      }
+      game.endRound();
+      aiStones = stones;
+    }
+    thinking = false;
+    hideOverlay();
+    if (gen !== aiGen) {                    // 期间悔棋/重开了，结果作废
+      updateStatus();
+      refreshButtons();
+      return;
+    }
+    if (isXiangqi() && (!aiStones || !aiStones.length)) {
+      game.finished = true;
+      game.reason = 'AI 无着可走';
+    }
+    afterAiMoved(aiStones, aiPlaced, gen);
+  }
+
+  /** AI 已落子：象棋走滑动动画、连珠类走出生动画；动画结束后刷新状态并连锁下一步。 */
+  function afterAiMoved(aiStones, aiPlaced, gen) {
+    if (isXiangqi() && aiStones && aiStones.length) {
+      playSlide(function () {
+        if (gen !== aiGen) { updateStatus(); refreshButtons(); return; }
         paint();
         updateStatus();
         refreshButtons();
         if (game.finished) { finishGame(); return; }
-        maybeAiTurn();                          // 连锁：下一个也是 AI（机机/观战）
-      }, 40);
+        if (game.board.checkFlag) Sfx.play('check');
+        maybeAiTurn();                        // 连锁：机机/观战模式
+      });
+      return;
+    }
+    playBirth(aiPlaced, function () {
+      if (gen !== aiGen) { updateStatus(); refreshButtons(); return; }
+      paint();
+      updateStatus();
+      refreshButtons();
+      if (game.finished) { finishGame(); return; }
+      maybeAiTurn();                          // 连锁：下一个也是 AI（机机/观战）
     });
   }
 

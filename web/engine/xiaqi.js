@@ -315,13 +315,25 @@ XiangqiBoard.prototype.isAttacked = function (tx, ty, byColor) {
   for (var d = 0; d < 4; d++) {
     var dx = orth[d][0], dy = orth[d][1];
 
-    // ---- (1) 车：第一个遇到的子是车且同色 → 攻击 ----
+    // ---- (1) 车 / 将：第一个遇到的子是敌车或敌将 → 攻击 ----
+    //
+    // 【为什么把敌方 KING 也算进车射线——飞将（将帅照面）规则】
+    // 双王同列且中间无子时，将/帅可以直接互吃（飞将），这本身就是一种攻击。
+    // 若不把敌方 KING 计入射线，isAttacked 就检测不到照面 → inCheck 判不出
+    // → legalMoves 不会过滤"移开挡子送将"的着法 → 玩家能走出违规棋，
+    //   将死/困毙的终局判定也会失真。
+    //
+    // 【安全性论证：不会产生横向误判】红王只会在 y∈[7,9]、黑王只会在 y∈[0,2]
+    // （见 inPalace），双方九宫永不共行。而 isAttacked 的实战调用点
+    // （inCheck、评估的将帅安全项）目标格永远是某方的将/帅，因此横向射线上
+    // 第一颗子绝不可能是敌方王，横向不会误判；纵向命中恰好就是照面语义。
+    // 其余子力判定不受影响——只是把"第一个遇到的子"的合法身份多认一种。
     i = tx + dx; j = ty + dy;
     while (i >= 0 && i < COLS && j >= 0 && j < ROWS) {
       p = at(i, j);
       if (p) {
-        if (p[0] === byColor && p[1] === CHARIOT) {
-          if (TRACE) console.log('XQ 命中: 车 (' + i + ',' + j + ')');
+        if (p[0] === byColor && (p[1] === CHARIOT || p[1] === KING)) {
+          if (TRACE) console.log('XQ 命中: 车/将 (' + i + ',' + j + ')');
           return true;
         }
         break;                       // 被这个子挡住，车到此为止

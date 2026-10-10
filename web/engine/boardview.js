@@ -226,7 +226,8 @@ View.prototype.drawStone = function (ctx, x, y, color, opts) {
  * 3) 效果层。
  * fx 结构：
  *   { last: [x,y]|null, selected: [{x,y}], winLine: [[x,y]], ghosts: [...] }
- * ghosts 为悔棋倒退动画的中间态：{x, y, color, t(0..1), ripple}
+ * ghosts 悔棋倒退动画：{x, y, color, t(0..1), ripple}；
+ *        出生动画：{x, y, color, birth(0..1)}
  */
 View.prototype.drawFx = function (ctx, fx) {
   var g = this.geom;
@@ -278,9 +279,23 @@ View.prototype.drawFx = function (ctx, fx) {
   }
 
   // 悔棋倒退动画：幽灵棋子（上浮 + 缩小 + 淡出）+ 扩散涟漪
+  // 出生动画形态：{x, y, color, birth: 0..1}（缩放入场 0→1 带轻微过冲），
+  // 与悔棋的 {x, y, color, t, ripple} 互不干扰：有 birth 走出生分支，否则走原悔棋路径。
   if (fx.ghosts && fx.ghosts.length) {
     for (var k = 0; k < fx.ghosts.length; k++) {
       var gh = fx.ghosts[k];
+      if (gh.birth !== undefined) {
+        var bt = Math.max(0, Math.min(1, gh.birth));
+        // easeOutBack：从 0 弹到约 1.10 再回落到 1，落子"啪"地一下的分量感
+        var c1 = 1.70158, c3 = c1 + 1;
+        var u = bt - 1;
+        var back = 1 + c3 * u * u * u + c1 * u * u;
+        this.drawStone(ctx, gh.x, gh.y, gh.color, {
+          scale: Math.max(0.05, back),
+          alpha: Math.min(1, 0.35 + 0.65 * bt)
+        });
+        continue;
+      }
       var t = Math.max(0, Math.min(1, gh.t));
       var lift = g.cell * 0.85 * t;
       var sc = 1 - 0.28 * t;

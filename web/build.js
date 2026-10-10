@@ -68,6 +68,66 @@ var outFile = path.join(OUT, 'engine.bundle.js');
 fs.writeFileSync(outFile, parts.join('\n'), 'utf8');
 console.log('已生成 ' + outFile + '（' + (fs.statSync(outFile).size / 1024).toFixed(1) + ' KB）');
 
+// ------------------------------------------------------------------ AI Worker
+// engine.worker.js = 现有 bundle 全文 + worker 胶水，让 AI 搜索跑在后台线程，
+// 主线程不再被同步搜索卡住（向桌面 exe 版的响应手感看齐）。
+// 协议：主线程 postMessage {id, variant, difficulty, seed, payload}；
+//   - variant==='xiangqi'：payload {grid(10×9 的 [color,kind]|null), turn}
+//     → 重建 XiangqiBoard → XqAI.getMove → postMessage {id, move}（[fx,fy,tx,ty]|null）
+//   - 其他（连珠类）：payload {size, winCount, moves([[x,y,color],…] 有序), maxStones}
+//     → 重建 Board 逐一 place 重放 → AI.getMove → postMessage {id, stones}（[[x,y],…]）
+//   - variant==='ping'：轻量探测，立即回 {id, pong:true}（主线程用它判断 worker 可用）
+//   - 任何异常 postMessage {id, error: message}，绝不让主线程干等
+var workerGlue = [
+  '',
+  '/* worker 胶水：重建局面 → 搜索 → 回传（任何异常都回传 error，绝不静默卡死） */',
+  '(function () {',
+  '  var E = (typeof globalThis !== "undefined" ? globalThis : self).E;',
+  '  self.onmessage = function (ev) {',
+  '    var msg = ev.data || {};',
+  '    var id = msg.id;',
+  '    if (msg.variant === "ping") { self.postMessage({ id: id, pong: true }); return; }',
+  '    try {',
+  '      if (msg.variant === "xiangqi") {',
+  '        var X = E.xiaqi;',
+  '        var bd = new X.XiangqiBoard();',
+  '        bd.grid = msg.payload.grid;',
+  '        bd.turn = msg.payload.turn;',
+  '        bd.checkFlag = bd.inCheck(bd.turn);',
+  '        var move = new X.XqAI(msg.difficulty, msg.seed).getMove(bd);',
+  '        self.postMessage({ id: id, move: move });',
+  '      } else {',
+  '        var Bm = E.board;',
+  '        var b = new Bm.Board(msg.payload.size, msg.payload.winCount);',
+  '        var moves = msg.payload.moves || [];',
+  '        var lastColor = 0;',
+  '        for (var i = 0; i < moves.length; i++) {',
+  '          b.place(moves[i][0], moves[i][1], moves[i][2]);',
+  '          lastColor = moves[i][2];',
+  '        }',
+  '        var color = moves.length ? (lastColor === 1 ? 2 : 1) : 1;',
+  '        var stones = new E.ai.AI(msg.difficulty, msg.seed).getMove(b, color, msg.payload.maxStones);',
+  '        self.postMessage({ id: id, stones: stones });',
+  '      }',
+  '    } catch (e) {',
+  '      self.postMessage({ id: id, error: (e && e.message) ? e.message : String(e) });',
+  '    }',
+  '  };',
+  '})();',
+  ''
+].join('\n');
+var workerFile = path.join(OUT, 'engine.worker.js');
+fs.writeFileSync(workerFile, parts.join('\n') + workerGlue, 'utf8');
+console.log('已生成 ' + workerFile + '（' + (fs.statSync(workerFile).size / 1024).toFixed(1) + ' KB）');
+// worker 脚本在浏览器里跑（依赖 self），这里只做语法自检，不在 Node 里执行
+try {
+  new (require('vm').Script)(fs.readFileSync(workerFile, 'utf8'), { filename: 'engine.worker.js' });
+  console.log('worker 脚本语法自检通过');
+} catch (e) {
+  console.error('engine.worker.js 语法错误：' + e.message);
+  process.exit(1);
+}
+
 // ------------------------------------------------------------------ 发布目录
 // 静态托管只认"根目录下有 index.html"，而本项目的网页版在 web/ 子目录里，
 // 直接整仓部署会 404。所以这里把发布所需文件复制成一个自包含目录 web/dist/site/。
@@ -85,7 +145,8 @@ var PUBLISH = [
   ['style.css', 'style.css'],
   ['app.js', 'app.js'],
   ['favicon.svg', 'favicon.svg'],
-  [path.join('dist', 'engine.bundle.js'), 'engine.bundle.js']   // 平铺，不放子目录
+  [path.join('dist', 'engine.bundle.js'), 'engine.bundle.js'],   // 平铺，不放子目录
+  [path.join('dist', 'engine.worker.js'), 'engine.worker.js']    // 平铺，不放子目录
 ];
 var copied = [];
 PUBLISH.forEach(function (pair) {
@@ -144,7 +205,7 @@ console.log('   引用的本地资源全部就位：' + refs.join(' / '));
 //   这里只覆盖/新增"网页产物这几个固定文件名"，其余文件一律不碰。
 var DOCS = path.join(ROOT, '..', 'docs');
 if (!fs.existsSync(DOCS)) fs.mkdirSync(DOCS, { recursive: true });
-var PAGE_FILES = ['index.html', 'style.css', 'app.js', 'engine.bundle.js', 'favicon.svg', '.nojekyll'];
+var PAGE_FILES = ['index.html', 'style.css', 'app.js', 'engine.bundle.js', 'engine.worker.js', 'favicon.svg', '.nojekyll'];
 PAGE_FILES.forEach(function (name) {
   var src = path.join(SITE, name);
   if (fs.existsSync(src)) fs.copyFileSync(src, path.join(DOCS, name));

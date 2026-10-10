@@ -3748,3 +3748,37 @@ module.exports = {
   root.E = E;
   if (typeof module !== "undefined" && module.exports) module.exports = E;
 })(typeof globalThis !== "undefined" ? globalThis : this);
+/* worker 胶水：重建局面 → 搜索 → 回传（任何异常都回传 error，绝不静默卡死） */
+(function () {
+  var E = (typeof globalThis !== "undefined" ? globalThis : self).E;
+  self.onmessage = function (ev) {
+    var msg = ev.data || {};
+    var id = msg.id;
+    if (msg.variant === "ping") { self.postMessage({ id: id, pong: true }); return; }
+    try {
+      if (msg.variant === "xiangqi") {
+        var X = E.xiaqi;
+        var bd = new X.XiangqiBoard();
+        bd.grid = msg.payload.grid;
+        bd.turn = msg.payload.turn;
+        bd.checkFlag = bd.inCheck(bd.turn);
+        var move = new X.XqAI(msg.difficulty, msg.seed).getMove(bd);
+        self.postMessage({ id: id, move: move });
+      } else {
+        var Bm = E.board;
+        var b = new Bm.Board(msg.payload.size, msg.payload.winCount);
+        var moves = msg.payload.moves || [];
+        var lastColor = 0;
+        for (var i = 0; i < moves.length; i++) {
+          b.place(moves[i][0], moves[i][1], moves[i][2]);
+          lastColor = moves[i][2];
+        }
+        var color = moves.length ? (lastColor === 1 ? 2 : 1) : 1;
+        var stones = new E.ai.AI(msg.difficulty, msg.seed).getMove(b, color, msg.payload.maxStones);
+        self.postMessage({ id: id, stones: stones });
+      }
+    } catch (e) {
+      self.postMessage({ id: id, error: (e && e.message) ? e.message : String(e) });
+    }
+  };
+})();

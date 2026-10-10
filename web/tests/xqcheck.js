@@ -43,13 +43,19 @@ function refAttacked(bd, tx, ty, byColor) {
 
   var orth = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 
-  // 车：该方向第一个子就是它
+  // 车/将：该方向第一个子就是它。
+  // 【与引擎同步】敌方 KING 同样算射线攻击源（飞将=将帅照面）：
+  // 双王同列无遮挡即互攻，否则 inCheck 检测不到照面。与引擎
+  // isAttacked 的射线分支保持同一语义，对拍才可比。
   for (var d = 0; d < 4; d++) {
     var dx = orth[d][0], dy = orth[d][1];
     var i = tx + dx, j = ty + dy;
     while (i >= 0 && i < X.COLS && j >= 0 && j < X.ROWS) {
       var p = at(i, j);
-      if (p) { if (p[0] === byColor && p[1] === X.CHARIOT) return true; break; }
+      if (p) {
+        if (p[0] === byColor && (p[1] === X.CHARIOT || p[1] === X.KING)) return true;
+        break;
+      }
       i += dx; j += dy;
     }
   }
@@ -258,6 +264,69 @@ comparePosition('初始局面', new X.XiangqiBoard());
   b.apply([mv3[0], mv3[1]], [mv3[2], mv3[3]], false);
   var stillCheck = b.inCheck(X.RED);
   ok('被将军时能应将（帅不再被攻击）', !stillCheck, '着法=' + JSON.stringify(mv3));
+})();
+
+// ------------------------------------------------------------------ 飞将（将帅照面）回归
+// 用例 a：双王同列、中间无子 → 双方 inCheck 均须为 true（照面即互攻）
+(function () {
+  var b = new X.XiangqiBoard();
+  b.grid = [];
+  for (var y = 0; y < X.ROWS; y++) {
+    var row = [];
+    for (var x = 0; x < X.COLS; x++) row.push(null);
+    b.grid.push(row);
+  }
+  b.grid[0][4] = [X.BLACK, X.KING];
+  b.grid[9][4] = [X.RED, X.KING];
+  ok('照面：双王同列无遮挡，双方 inCheck 均为 true',
+    b.inCheck(X.RED) === true && b.inCheck(X.BLACK) === true);
+})();
+
+// 用例 b：双王同列、中间恰一枚己方车挡住 → 车横移离开将线的着法必须被过滤
+(function () {
+  var b = new X.XiangqiBoard();
+  b.grid = [];
+  for (var y = 0; y < X.ROWS; y++) {
+    var row = [];
+    for (var x = 0; x < X.COLS; x++) row.push(null);
+    b.grid.push(row);
+  }
+  b.grid[0][4] = [X.BLACK, X.KING];
+  b.grid[9][4] = [X.RED, X.KING];
+  b.grid[5][4] = [X.RED, X.CHARIOT];       // 红车挡在将线上
+  b.grid[9][3] = [X.RED, X.ADVISOR];       // 仕：与照面无关的着法来源
+  b.turn = X.RED;
+
+  // 前提自检：红车伪合法着法中确实存在横移（保证下面的过滤不是空集碰巧成立）
+  var pseudoSide = b.movesOf(X.RED).filter(function (m) {
+    return m[0] === 4 && m[1] === 5 && m[3] === 5 && m[2] !== 4;
+  });
+  ok('前提自检：挡线车的伪合法着法中确有横移', pseudoSide.length > 0,
+    '横移伪合法着法数=' + pseudoSide.length);
+
+  var legal = b.legalMoves(X.RED);
+  var sideOff = legal.filter(function (m) {
+    return m[0] === 4 && m[1] === 5 && m[3] === 5 && m[2] !== 4;
+  });
+  ok('照面着法被过滤：挡线车横移离开将线不在 legalMoves', sideOff.length === 0);
+
+  // 仕斜走（(3,9)→(4,8)）不影响将线上的遮挡，必须仍然合法
+  var adv = legal.some(function (m) {
+    return m[0] === 3 && m[1] === 9 && m[2] === 4 && m[3] === 8;
+  });
+  ok('与照面无关的着法（仕斜走）仍在 legalMoves', adv);
+
+  // 车沿将线纵向移动仍保持遮挡，同样必须合法
+  var vert = legal.some(function (m) {
+    return m[0] === 4 && m[1] === 5 && m[2] === 4 && m[3] === 6;
+  });
+  ok('不破坏遮挡的着法（挡线车纵向移动）仍在 legalMoves', vert);
+})();
+
+// 用例 c：初始局面红方合法着法仍为 44（防止修复误伤正常走法生成）
+(function () {
+  var n = new X.XiangqiBoard().legalMoves(X.RED).length;
+  ok('初始局面红方合法着法仍为 44', n === 44, '实际=' + n);
 })();
 
 console.log('\n合计：' + passed + ' passed, ' + failed + ' failed');

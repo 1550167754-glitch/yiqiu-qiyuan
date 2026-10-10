@@ -407,15 +407,24 @@ XqView.prototype.drawFx = function (ctx, fx) {
     }
   }
 
-  // 走子滑动动画：被吃子原地淡出，行进子沿弧线滑入落点
+  // 走子滑动动画：被吃子原地淡出（叠加缩小），行进子沿弧线滑入落点；
+  // 有吃子时落点画一圈快速扩散消散的金色涟漪（透明度递减，克制不刺眼）
   if (fx.slide) {
     var sl = fx.slide;
     var et = 1 - Math.pow(1 - Math.min(1, Math.max(0, sl.t)), 3);   // easeOutCubic
     if (sl.captured) {
       this.drawPiece(ctx, sl.tx, sl.ty, sl.captured, {
         alpha: Math.max(0, 1 - sl.t * 1.7),
-        scale: 1 - 0.10 * sl.t
+        scale: 1 - 0.24 * sl.t
       });
+      // 吃子涟漪：金色圆环从落点扩散，随 t 递减消失
+      var rp = this.center(sl.tx, sl.ty);
+      var rr = r * (0.55 + 1.25 * sl.t);
+      ctx.strokeStyle = 'rgba(232,179,75,' + (0.60 * (1 - sl.t)).toFixed(3) + ')';
+      ctx.lineWidth = Math.max(1, r * 0.16 * (1 - sl.t));
+      ctx.beginPath();
+      ctx.arc(rp.cx, rp.cy, rr, 0, Math.PI * 2);
+      ctx.stroke();
     }
     var ix = sl.fx + (sl.tx - sl.fx) * et;
     var iy = sl.fy + (sl.ty - sl.fy) * et;
