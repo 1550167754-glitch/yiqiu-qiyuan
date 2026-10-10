@@ -74,6 +74,9 @@
           <label class="row"><span>棋盘主题</span>
             <select id="theme"></select>
           </label>
+          <label class="row"><span>音效</span>
+            <input type="checkbox" id="chkSound" checked>
+          </label>
           <button id="btnNew" class="btn primary">开始新对局</button>
         </div>
 
@@ -89,6 +92,7 @@
             <button id="btnPass" class="btn" disabled>结束本回合</button>
             <button id="btnUndo" class="btn">悔棋</button>
             <button id="btnResign" class="btn danger">认输</button>
+            <button id="btnFlip" class="btn wide" style="display:none">翻转棋盘</button>
           </div>
           <p class="hint" id="hint">点击棋盘选点，选满自动落子；也可选 1 子后点「结束本回合」。</p>
         </div>
@@ -138,12 +142,15 @@
         <ul class="rules">
           <li>红先。完整规则：马蹩腿、象塞眼、炮隔子吃、兵过河可平移、将帅不可照面。</li>
           <li>将死或困毙（无合法着法）均判负。</li>
+          <li>点子走子：先点己方棋子（绿环=可走、红圈=可吃），再点目标格即可；<b>Esc</b> 取消选中。</li>
+          <li>执黑时棋盘自动翻转（己方在下方），也可随时点「翻转棋盘」。</li>
         </ul>
         <h2>操作说明</h2>
         <ul class="rules">
-          <li><b>两步落子</b>：先点棋盘选点（虚线预览），再点「确认落子」。</li>
+          <li><b>连珠类两步落子</b>：先点棋盘选点（虚线预览），再点「确认落子」。</li>
           <li><b>悔棋</b>：人机模式一次撤掉「AI 一轮 + 我方一轮」，回到我方行棋；带倒退动画。</li>
-          <li>快捷键：<b>Enter</b> 确认落子、<b>Esc</b> 取消选择。</li>
+          <li>快捷键：<b>Enter</b> 确认落子（连珠类）、<b>Esc</b> 取消选择。</li>
+          <li>音效在设置里可开关，选择会自动记忆。</li>
         </ul>
       </div>
     </div>

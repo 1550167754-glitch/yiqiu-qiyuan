@@ -38,6 +38,69 @@
   var overlayText = $('overlayText');
   var banner = $('banner');
 
+  // ---------------------------------------------------------------- 音效（WebAudio 合成，零资源文件）
+  // 木片落盘声 = 短噪声过带通（"嗒"）+ 低频正弦敲击（"咚"）；
+  // 吃子更低沉响亮，将军/胜负用三音阶提示。全部运行时合成，不加载任何音频文件。
+  var Sfx = (function () {
+    var ac = null;
+    function actx() {
+      try {
+        if (!ac) {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          ac = new AC();
+        }
+        if (ac.state === 'suspended') ac.resume();   // 浏览器自动播放策略：手势后恢复
+        return ac;
+      } catch (e) { return null; }
+    }
+    function muted() { var el = $('chkSound'); return el ? !el.checked : false; }
+    function thump(c, t0, f0, f1, vol, dur) {
+      var o = c.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(f0, t0);
+      o.frequency.exponentialRampToValueAtTime(f1, t0 + dur * 0.8);
+      var g = c.createGain();
+      g.gain.setValueAtTime(vol, t0);
+      g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    function knock(c, t0, freq, vol) {
+      var n = Math.floor(c.sampleRate * 0.05);
+      var buf = c.createBuffer(1, n, c.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.5);
+      var src = c.createBufferSource(); src.buffer = buf;
+      var bp = c.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.value = freq; bp.Q.value = 1.1;
+      var g = c.createGain(); g.gain.value = vol;
+      src.connect(bp); bp.connect(g); g.connect(c.destination);
+      src.start(t0);
+    }
+    function tone(c, t0, f, dur, vol) {
+      var o = c.createOscillator(); o.type = 'triangle';
+      o.frequency.value = f;
+      var g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(vol, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    function play(kind) {
+      if (muted()) return;
+      var c = actx(); if (!c) return;
+      var t0 = c.currentTime + 0.01;
+      if (kind === 'move') { knock(c, t0, 1500, 0.32); thump(c, t0, 210, 85, 0.28, 0.10); }
+      else if (kind === 'capture') { knock(c, t0, 950, 0.48); thump(c, t0, 165, 70, 0.40, 0.13); }
+      else if (kind === 'select') { knock(c, t0, 2100, 0.14); }
+      else if (kind === 'check') { tone(c, t0, 660, 0.12, 0.20); tone(c, t0 + 0.11, 880, 0.16, 0.20); }
+      else if (kind === 'win') { tone(c, t0, 523, 0.14, 0.22); tone(c, t0 + 0.13, 659, 0.14, 0.22); tone(c, t0 + 0.26, 784, 0.22, 0.24); }
+      else if (kind === 'lose') { tone(c, t0, 392, 0.16, 0.20); tone(c, t0 + 0.15, 330, 0.16, 0.20); tone(c, t0 + 0.30, 262, 0.26, 0.22); }
+    }
+    return { play: play };
+  })();
+
   // ---------------------------------------------------------------- 状态
   var view = new V.View();
   var xqView = new XV.XqView();
@@ -50,7 +113,8 @@
   var selected = [];              // 连珠类：待确认落点；象棋：至多一项（选中的子）
   var thinking = false;
   var aiGen = 0;                  // AI 代数：悔棋/重开后作废旧结果
-  var anim = null;                // 悔棋动画状态
+  var anim = null;                // 动画状态：{type:'slide'|'undo', ...}
+  var xqFlipped = false;          // 象棋棋盘翻转（执黑时自动开，可手动切换）
   var dpr = 1;
 
   function isHumanTurn() {
@@ -106,6 +170,7 @@
     if (!game) return;
     try {
       if (isXiangqi()) {
+        if (anim && anim.type === 'slide') { paintSlideFrame(); return; }
         var bd = game.board;
         var side = bd.turn;
         var kind = bd.findKing(side);
@@ -123,7 +188,7 @@
           });
         }
         if (kind && bd.inCheck(side)) fx.check = { x: kind[0], y: kind[1] };
-        xqView.render(ctx, bd, fx);
+        xqView.render(ctx, bd, fx, themeName);
       } else {
         var st = {
           history: game.board.history,
@@ -167,6 +232,9 @@
         black: mkXqPlayer(XQ_RED),
         white: mkXqPlayer(XQ_BLACK)
       });
+      // 我执黑（后手）时翻转棋盘，让己方永远在下方（与实体棋对坐习惯一致）
+      xqFlipped = (mode === 'human_ai' && $('side').value === 'white');
+      xqView.flipped = xqFlipped;
     } else {
       humanSide = $('side').value === 'black' ? BLACK : WHITE;
       game = new G.Game({
@@ -176,9 +244,17 @@
       });
     }
 
+    // 棋谱面板与按钮可见性按棋种切换：
+    // 象棋没有"确认/结束本回合"（点子→点目标直接走），但多一个"翻转棋盘"
+    $('cardRecord').hidden = false;
+    $('btnConfirm').style.display = isXiangqi() ? 'none' : '';
+    $('btnPass').style.display = isXiangqi() ? 'none' : '';
+    $('btnFlip').style.display = isXiangqi() ? '' : 'none';
+
     Store.saveSettings({
       variant: variant, mode: mode, difficulty: difficulty,
-      side: $('side').value, theme: themeName
+      side: $('side').value, theme: themeName,
+      sound: $('chkSound').checked
     });
 
     resize();
@@ -220,7 +296,10 @@
   function updateStatus() {
     if (!game) return;
     var cur = game.currentPlayer();
-    var curName = cur.kind === 'human' ? '轮到你' : '轮到 ' + cur.name;
+    // 双人模式下"轮到你"有歧义（分不清该谁），显示棋手名；人机模式才说"轮到你"
+    var curName = (cur.kind === 'human' && mode !== 'human_human')
+      ? '轮到你'
+      : '轮到 ' + cur.name;
     $('lblTurn').textContent = game.finished
       ? game.resultText()
       : curName + (cur.kind === 'human' ? '' : '（思考中）');
@@ -295,7 +374,7 @@
     $('btnResign').disabled = !game || game.finished;
 
     if (isXiangqi()) {
-      // 象棋是"点子 → 点目标"两步走，没有"确认/结束本回合"
+      // 象棋是"点子 → 点目标"两步走，没有"确认/结束本回合"（按钮已隐藏）
       $('btnConfirm').disabled = true;
       $('btnPass').disabled = true;
       var canUndoXq = !!game && game.movesLog.length > 0 && !anim && !thinking && human;
@@ -303,7 +382,7 @@
       $('hint').textContent = (game && game.finished)
         ? '本局已结束，点「开始新对局」继续。'
         : (human
-          ? '点自己的棋子选中（绿点=可走，红圈=可吃），再点目标位置即可走子。'
+          ? '点自己的棋子选中（绿环=可走，红圈=可吃），再点目标即可走子；Esc 取消选中。'
           : 'AI 正在思考，请稍候…');
       return;
     }
@@ -335,24 +414,77 @@
     };
   }
 
-  /** 象棋的点击：选子 / 走子。 */
+  /** 象棋的点击：选子 / 走子。走子带滑动动画，AI 连锁推迟到动画结束。 */
   function onXiangqiClick(g) {
     var bd = game.board;
     var r = game.place(g.x, g.y);
     if (r.select) {
       selected = [{ x: r.select[0], y: r.select[1] }];
+      Sfx.play('select');
     } else if (r.ok) {
       selected = [];
     } else if (r.msg && r.msg !== '已取消选择') {
       $('hint').textContent = r.msg;
     }
-    paint();
-    updateStatus();
-    refreshButtons();
     if (r.ok) {
-      if (game.finished) { finishGame(); return; }
-      maybeAiTurn();
+      playSlide(function () {
+        updateStatus();
+        refreshButtons();
+        if (game.finished) { finishGame(); return; }
+        if (bd.checkFlag) Sfx.play('check');
+        maybeAiTurn();
+      });
+    } else {
+      paint();
+      updateStatus();
+      refreshButtons();
     }
+  }
+
+  /**
+   * 走子滑动动画（玩家与 AI 通用）。
+   * 数据取自 board.history 最后一手（apply 时已记录 captured），因此
+   * 调用时机是"落子已生效之后"，动画纯做视觉过渡：
+   *   行进子从起点滑到落点（easeOutCubic + 中途微抬），
+   *   被吃子原地淡出。期间 onBoardClick 被 anim 拦截，不会误触。
+   */
+  function playSlide(done) {
+    var bd = game.board;
+    var h = bd.history[bd.history.length - 1];
+    if (!h || !bd.piece(h[2], h[3])) { if (done) done(); return; }
+    Sfx.play(h[4] ? 'capture' : 'move');
+    anim = {
+      type: 'slide', started: performance.now(), dur: 220,
+      fx: h[0], fy: h[1], tx: h[2], ty: h[3],
+      piece: bd.piece(h[2], h[3]), captured: h[4] || null,
+      t: 0, raf: 0
+    };
+    function tick(now) {
+      if (!anim || anim.type !== 'slide') return;
+      var t = Math.min(1, (now - anim.started) / anim.dur);
+      anim.t = t;
+      paintSlideFrame();
+      if (t < 1) {
+        anim.raf = requestAnimationFrame(tick);
+      } else {
+        anim = null;
+        paint();
+        if (done) done();
+      }
+    }
+    anim.raf = requestAnimationFrame(tick);
+  }
+
+  /** 滑动动画单帧：只画"滑动中"的画面（上一步标记等全部隐藏，避免视觉打架）。 */
+  function paintSlideFrame() {
+    if (!game || !anim || anim.type !== 'slide') return;
+    xqView.render(ctx, game.board, {
+      last: null, selected: null, moves: null, check: null,
+      slide: {
+        piece: anim.piece, fx: anim.fx, fy: anim.fy, tx: anim.tx, ty: anim.ty,
+        t: anim.t, captured: anim.captured
+      }
+    }, themeName);
   }
 
   function onBoardClick(ev) {
@@ -473,6 +605,19 @@
           game.finished = true;
           game.reason = 'AI 无着可走';
         }
+        // 象棋 AI 的着子带滑动动画；动画结束再刷新状态并连锁下一步
+        if (isXiangqi() && aiStones && aiStones.length) {
+          playSlide(function () {
+            if (gen !== aiGen) { updateStatus(); refreshButtons(); return; }
+            paint();
+            updateStatus();
+            refreshButtons();
+            if (game.finished) { finishGame(); return; }
+            if (game.board.checkFlag) Sfx.play('check');
+            maybeAiTurn();                        // 连锁：机机/观战模式
+          });
+          return;
+        }
         paint();
         updateStatus();
         refreshButtons();
@@ -487,6 +632,10 @@
     paint();
     updateStatus();
     refreshButtons();
+    // 胜负音效：只在人机模式且有明确胜者时响（双人模式不替玩家庆祝）
+    if (mode === 'human_ai' && game.winner != null) {
+      Sfx.play(game.winner === humanSide ? 'win' : 'lose');
+    }
     var rec = game.toRecord();
     if (rec.result !== 'ABORT') {
       try { Store.saveGame(rec); } catch (e) { console.warn('存战绩失败', e); }
@@ -601,7 +750,7 @@
 
     if (!ghosts.length) { maybeAiTurn(); return; }
 
-    anim = { order: ghosts, idx: 0, t: 0, ghosts: [], raf: 0, started: performance.now() };
+    anim = { type: 'undo', order: ghosts, idx: 0, t: 0, ghosts: [], raf: 0, started: performance.now() };
     var PER = 240, GAP = 40;
     var total = ghosts.length * PER + (ghosts.length - 1) * GAP;
 
@@ -754,6 +903,13 @@
     $('btnConfirm').onclick = confirmStones;
     $('btnPass').onclick = passRound;
     $('btnUndo').onclick = doUndo;
+    $('btnFlip').onclick = function () {
+      // 翻转棋盘（仅象棋）：坐标换算全部走 xqView.disp/toGrid，翻转即改标志位
+      if (!isXiangqi()) return;
+      xqFlipped = !xqFlipped;
+      xqView.flipped = xqFlipped;
+      paint();
+    };
     $('btnResign').onclick = function () {
       if (!game || game.finished) return;
       game.resign();
@@ -771,7 +927,12 @@
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { confirmStones(); }
-      else if (e.key === 'Escape') { selected = []; paint(); refreshButtons(); }
+      else if (e.key === 'Escape') {
+        selected = [];
+        // 象棋的选中状态存在 game.selectedFrom 里，Esc 要一并取消
+        if (isXiangqi() && game && game.selectedFrom) { game.selectedFrom = null; }
+        paint(); refreshButtons();
+      }
     });
 
     window.addEventListener('resize', function () {
@@ -795,6 +956,7 @@
       if (s.side) $('side').value = s.side;
       if (s.theme) $('theme').value = s.theme;
       themeName = $('theme').value;
+      if (s.sound === false) $('chkSound').checked = false;   // 音效开关记忆
     }
     $('mode').onchange();
     newGame();

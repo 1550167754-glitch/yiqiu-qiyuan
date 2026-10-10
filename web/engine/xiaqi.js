@@ -1051,12 +1051,17 @@ XiangqiGame.prototype.place = function (x, y) {
 /** 象棋没有"结束本回合"，留一个兼容空实现。 */
 XiangqiGame.prototype.endRound = function () { };
 
-/** 供界面取"当前选中棋子能走哪儿"。 */
+/** 供界面取"当前选中棋子能走哪儿"。
+ *  入参兼容两种形态：[fx,fy] 数组（引擎内部）与 {x,y} 对象（app.js 的 selected）。
+ *  【曾踩坑】只按下标 from[0]/from[1] 取值，而界面传的是对象 → undefined 永远
+ *  匹配不上任何着法 → 可走点提示恒为空（"绿点=可走"从未显示过）。 */
 XiangqiGame.prototype.legalTargetsFrom = function (from) {
   if (!from) return [];
+  var fx = (from.length !== undefined) ? from[0] : from.x;
+  var fy = (from.length !== undefined) ? from[1] : from.y;
   var side = this.board.turn;
   return this.board.legalMoves(side).filter(function (m) {
-    return m[0] === from[0] && m[1] === from[1];
+    return m[0] === fx && m[1] === fy;
   }).map(function (m) { return { x: m[2], y: m[3] }; });
 };
 
