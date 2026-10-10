@@ -398,6 +398,16 @@ XqView.prototype.drawFx = function (ctx, fx) {
     ctx.stroke();
   }
 
+  // 悬停高亮：鼠标所在格画一圈淡金环，提示"这里会被点中"（增强交互感）
+  if (fx.hover) {
+    var hc = this.center(fx.hover.x, fx.hover.y);
+    ctx.strokeStyle = 'rgba(232,179,75,0.40)';
+    ctx.lineWidth = Math.max(1.5, r * 0.06);
+    ctx.beginPath();
+    ctx.arc(hc.cx, hc.cy, r * 0.48, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   // 幽灵（悔棋倒退动画用）
   if (fx.ghosts) {
     for (var k = 0; k < fx.ghosts.length; k++) {

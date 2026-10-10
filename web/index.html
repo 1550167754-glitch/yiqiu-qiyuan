@@ -32,11 +32,14 @@
     <div class="layout">
 
       <!-- 左：棋盘 -->
-      <div class="boardwrap">
+      <div class="boardwrap" id="boardwrap">
         <canvas id="board"></canvas>
+        <!-- 视觉反馈层：吃子/将军/将死的闪光与脉冲（不拦截点击） -->
+        <div id="fxLayer" class="fx-layer"></div>
         <div id="overlay" class="overlay is-hidden">
           <div class="spinner"></div>
           <span id="overlayText">AI 思考中…</span>
+          <div class="ai-progress" id="aiProgress"><i></i></div>
         </div>
         <div id="banner" class="banner is-hidden"></div>
       </div>

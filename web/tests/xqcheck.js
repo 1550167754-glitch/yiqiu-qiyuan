@@ -154,16 +154,29 @@ function comparePosition(name, board) {
 // ---- 局面 1：初始局面 ----
 comparePosition('初始局面', new X.XiangqiBoard());
 
-// ---- 局面 2：走了几步之后的常见中局 ----
+// ---- 局面 2：常见中局（手工摆放，覆盖车炮马兵过河，避免依赖一串合法性可疑的着法序列）----
 (function () {
   var b = new X.XiangqiBoard();
-  var seq = [[7, 1, 4, 1], [0, 1, 2, 2], [7, 7, 4, 7], [0, 7, 2, 6],
-             [9, 1, 7, 2], [2, 1, 2, 4], [8, 0, 8, 4]];
-  for (var i = 0; i < seq.length; i++) {
-    var m = seq[i];
-    b.apply([m[0], m[1]], [m[2], m[3]], false);
-  }
-  comparePosition('中局（炮马出动）', b);
+  var setup = [
+    [X.BLACK, X.KING, 4, 0],
+    [X.RED, X.KING, 4, 9],
+    [X.RED, X.CHARIOT, 0, 5],
+    [X.BLACK, X.CHARIOT, 8, 4],
+    [X.RED, X.CANNON, 1, 4],
+    [X.BLACK, X.CANNON, 7, 5],
+    [X.RED, X.HORSE, 2, 7],
+    [X.BLACK, X.HORSE, 6, 2],
+    [X.RED, X.PAWN, 4, 5],
+    [X.BLACK, X.PAWN, 4, 4],
+    [X.RED, X.ADVISOR, 3, 9],
+    [X.BLACK, X.ADVISOR, 5, 0],
+    [X.RED, X.ELEPHANT, 2, 9],
+    [X.BLACK, X.ELEPHANT, 6, 0]
+  ];
+  for (var y = 0; y < X.ROWS; y++) for (var x = 0; x < X.COLS; x++) b.grid[y][x] = null;
+  setup.forEach(function (p) { b.grid[p[3]][p[2]] = [p[0], p[1]]; });
+  b.turn = X.RED;
+  comparePosition('中局（车炮马过河）', b);
 })();
 
 // ---- 局面 3：大量混战（人为摆放，覆盖车炮马贴身）----

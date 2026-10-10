@@ -95,6 +95,7 @@ main { flex: 1; padding: 16px; }
   padding: 8px;
   min-height: 320px;
   display: grid; place-items: center;
+  will-change: transform;
 }
 #board {
   display: block;
@@ -106,9 +107,83 @@ main { flex: 1; padding: 16px; }
   cursor: pointer;
 }
 
+/* 视觉反馈层：叠在棋盘上、不拦截点击；吃子/将军/将死的闪光由 JS 切换 class 触发 */
+.fx-layer {
+  position: absolute; inset: 8px;
+  border-radius: 10px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 4;
+  box-shadow: inset 0 0 0 0 rgba(0,0,0,0);
+}
+.fx-layer.is-capture {
+  animation: fxCapture .42s ease-out;
+}
+.fx-layer.is-check {
+  animation: fxCheck .55s ease-out;
+}
+.fx-layer.is-checkmate {
+  animation: fxCheckmate .9s ease-out;
+}
+.fx-layer.is-win {
+  animation: fxWin .7s ease-out;
+}
+.fx-layer.is-lose {
+  animation: fxLose .7s ease-out;
+}
+@keyframes fxCapture {
+  0%   { opacity: 0; box-shadow: inset 0 0 0 0 rgba(232,179,75,0); }
+  22%  { opacity: 1; box-shadow: inset 0 0 42px 6px rgba(232,179,75,0.55); }
+  100% { opacity: 0; box-shadow: inset 0 0 60px 10px rgba(232,179,75,0); }
+}
+@keyframes fxCheck {
+  0%   { opacity: 0; box-shadow: inset 0 0 0 0 rgba(217,83,79,0); }
+  25%  { opacity: 1; box-shadow: inset 0 0 50px 8px rgba(217,83,79,0.62); }
+  100% { opacity: 0; box-shadow: inset 0 0 70px 12px rgba(217,83,79,0); }
+}
+@keyframes fxCheckmate {
+  0%   { opacity: 0; box-shadow: inset 0 0 0 0 rgba(217,83,79,0); }
+  18%  { opacity: 1; box-shadow: inset 0 0 70px 14px rgba(217,83,79,0.80); }
+  55%  { opacity: .55; box-shadow: inset 0 0 50px 10px rgba(217,83,79,0.45); }
+  100% { opacity: 0; box-shadow: inset 0 0 80px 16px rgba(217,83,79,0); }
+}
+@keyframes fxWin {
+  0%   { opacity: 0; box-shadow: inset 0 0 0 0 rgba(62,187,107,0); }
+  25%  { opacity: 1; box-shadow: inset 0 0 56px 10px rgba(62,187,107,0.55); }
+  100% { opacity: 0; box-shadow: inset 0 0 76px 14px rgba(62,187,107,0); }
+}
+@keyframes fxLose {
+  0%   { opacity: 0; box-shadow: inset 0 0 0 0 rgba(120,130,150,0); }
+  25%  { opacity: 1; box-shadow: inset 0 0 56px 10px rgba(120,130,150,0.50); }
+  100% { opacity: 0; box-shadow: inset 0 0 76px 14px rgba(120,130,150,0); }
+}
+
+/* 屏幕抖动（桌面端无振动马达，用视觉抖动补足"震动反馈"） */
+.boardwrap.shake-s { animation: shakeS .22s ease-in-out; }
+.boardwrap.shake-m { animation: shakeM .34s ease-in-out; }
+.boardwrap.shake-l { animation: shakeL .5s ease-in-out; }
+@keyframes shakeS {
+  0%,100% { transform: translate(0,0); }
+  30% { transform: translate(-2px, 1px); }
+  60% { transform: translate(2px, -1px); }
+}
+@keyframes shakeM {
+  0%,100% { transform: translate(0,0); }
+  20% { transform: translate(-4px, 2px); }
+  45% { transform: translate(4px, -2px); }
+  70% { transform: translate(-3px, 1px); }
+}
+@keyframes shakeL {
+  0%,100% { transform: translate(0,0) rotate(0); }
+  15% { transform: translate(-7px, 3px) rotate(-.4deg); }
+  35% { transform: translate(7px, -3px) rotate(.4deg); }
+  55% { transform: translate(-5px, 2px) rotate(-.3deg); }
+  75% { transform: translate(4px, -2px) rotate(.2deg); }
+}
+
 .overlay {
   position: absolute; inset: 8px;
-  display: flex; align-items: center; justify-content: center; gap: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   background: rgba(23, 27, 36, 0.55);
   border-radius: 10px;
   font-size: 15px; color: var(--c-text);
@@ -121,6 +196,21 @@ main { flex: 1; padding: 16px; }
   border-top-color: var(--c-accent);
   animation: spin .8s linear infinite;
 }
+/* AI 思考进度条（不确定进度，循环流动） */
+.ai-progress {
+  width: 120px; height: 4px; border-radius: 999px;
+  background: rgba(255,255,255,0.12); overflow: hidden;
+}
+.ai-progress > i {
+  display: block; height: 100%; width: 40%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(232,179,75,0), var(--c-accent), rgba(232,179,75,0));
+  animation: aiIndeterminate 1.1s ease-in-out infinite;
+}
+@keyframes aiIndeterminate {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(310%); }
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .banner {
@@ -132,11 +222,25 @@ main { flex: 1; padding: 16px; }
   padding: 20px 30px; text-align: center;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   z-index: 8; min-width: 240px;
+  animation: bannerPop .5s cubic-bezier(.2, .9, .3, 1.25) both;
+}
+/* 每次从 is-hidden 显隐都会重放该动画（display none→block 触发） */
+@keyframes bannerPop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.82); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 .banner.is-hidden { display: none; }
 .banner .big { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
 .banner .sub { color: var(--c-dim); font-size: 13px; margin-bottom: 14px; }
 .banner .row { display: flex; gap: 10px; justify-content: center; }
+
+/* 轮到玩家时状态条轻微脉冲，提示"该你走" */
+.status .line.pulse { animation: turnPulse 1.8s ease-in-out infinite; }
+@keyframes turnPulse {
+  0%, 100% { color: var(--c-text); text-shadow: 0 0 0 rgba(232, 179, 75, 0); }
+  50%      { color: var(--c-accent); text-shadow: 0 0 10px rgba(232, 179, 75, 0.55); }
+}
 
 /* ---------------- 侧栏 ---------------- */
 .sidebar { display: grid; gap: 14px; }
@@ -147,6 +251,15 @@ main { flex: 1; padding: 16px; }
   border-radius: var(--radius);
   padding: 14px 16px;
   transition: border-color .2s ease, box-shadow .2s ease;
+  animation: cardIn .55s cubic-bezier(.2, .7, .3, 1) both;
+}
+/* 侧栏/窄栏多卡片错峰入场，营造"逐张铺开"的层次感 */
+.sidebar > .card:nth-child(2) { animation-delay: .07s; }
+.sidebar > .card:nth-child(3) { animation-delay: .14s; }
+.narrow > .card:nth-child(2) { animation-delay: .07s; }
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 @media (hover: hover) {
   .card:hover { border-color: #414B60; box-shadow: 0 4px 14px rgba(0, 0, 0, .16); }

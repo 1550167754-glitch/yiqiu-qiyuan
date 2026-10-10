@@ -37,6 +37,8 @@
   var overlay = $('overlay');
   var overlayText = $('overlayText');
   var banner = $('banner');
+  var boardwrap = $('boardwrap');
+  var fxLayer = $('fxLayer');
 
   // ---------------------------------------------------------------- 音效（WebAudio 合成，零资源文件）
   // 木片落盘声 = 短噪声过带通（"嗒"）+ 低频正弦敲击（"咚"）；
@@ -103,6 +105,54 @@
     return { play: play };
   })();
 
+  // ---------------------------------------------------------------- 触感（震动）反馈
+  // 移动端（Android Chrome 等）走 navigator.vibrate；桌面端无振动马达，
+  // 用下方的视觉"屏幕抖动"补足。两者叠加，保证"反馈一定到位"。
+  var Haptic = (function () {
+    function v(p) {
+      try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) { /* 不支持即忽略 */ }
+    }
+    return {
+      move: function () { v(8); },                                   // 轻点：落子
+      capture: function () { v([16, 10, 22]); },                     // 吃子：两短一长
+      check: function () { v([30, 18, 30, 18, 40]); },              // 将军：强脉冲
+      win: function () { v([40, 30, 40, 30, 70]); },                 // 胜：庆祝
+      lose: function () { v([70, 40, 120]); }                        // 负：沉重
+    };
+  })();
+
+  // ---------------------------------------------------------------- 视觉反馈层
+  // flash：在 fxLayer 上触发一次性闪光/脉冲（吃子金、将军红、将死强红、胜负色）。
+  // shake：给棋盘容器加一次性抖动 class（桌面端替代振动的"震"感）。
+  var Feedback = (function () {
+    function flash(type) {
+      if (!fxLayer) return;
+      // 复用同一监听器，避免快速连触发时旧监听器把新动画提前打断
+      if (flash._fn) fxLayer.removeEventListener('animationend', flash._fn);
+      fxLayer.className = 'fx-layer is-' + type;
+      flash._fn = function () {
+        fxLayer.className = 'fx-layer';
+        fxLayer.removeEventListener('animationend', flash._fn);
+      };
+      fxLayer.addEventListener('animationend', flash._fn);
+    }
+    function shake(level) {
+      if (!boardwrap) return;
+      var cls = 'shake-' + level;
+      if (shake._fn) boardwrap.removeEventListener('animationend', shake._fn);
+      boardwrap.classList.remove('shake-s', 'shake-m', 'shake-l');
+      // 强制回流，确保同名抖动可重复触发
+      void boardwrap.offsetWidth;
+      boardwrap.classList.add(cls);
+      shake._fn = function () {
+        boardwrap.classList.remove(cls);
+        boardwrap.removeEventListener('animationend', shake._fn);
+      };
+      boardwrap.addEventListener('animationend', shake._fn);
+    }
+    return { flash: flash, shake: shake };
+  })();
+
   // ---------------------------------------------------------------- 状态
   var view = new V.View();
   var xqView = new XV.XqView();
@@ -118,6 +168,7 @@
   var anim = null;                // 动画状态：{type:'slide'|'undo', ...}
   var xqFlipped = false;          // 象棋棋盘翻转（执黑时自动开，可手动切换）
   var dpr = 1;
+  var hoverCell = null;           // 鼠标悬停的棋盘格（象棋悬停高亮用）
 
   function isHumanTurn() {
     if (!game || game.finished) return false;
@@ -181,7 +232,8 @@
           selected: selected.length ? selected[0] : null,
           moves: bd.lastMove || selected.length ? null : null,
           check: null,
-          ghosts: null
+          ghosts: null,
+          hover: (!anim && isHumanTurn()) ? hoverCell : null
         };
         // 可落点提示：选中自己的子时显示
         if (selected.length) {
@@ -222,6 +274,7 @@
     cancelAnim();
     aiGen += 1;
     selected = [];
+    hoverCell = null;
     thinking = false;
     setBanner('');
     hideOverlay();
@@ -313,6 +366,9 @@
     $('lblTurn').textContent = game.finished
       ? game.resultText()
       : curName + (cur.kind === 'human' ? '' : '（思考中）');
+    // 人机模式下轮到玩家时，状态条轻微脉冲提示"该你走"
+    $('lblTurn').classList.toggle('pulse',
+      !game.finished && mode === 'human_ai' && cur.kind === 'human');
 
     if (isXiangqi()) {
       var bd = game.board;
@@ -441,7 +497,12 @@
         updateStatus();
         refreshButtons();
         if (game.finished) { finishGame(); return; }
-        if (bd.checkFlag) Sfx.play('check');
+        if (bd.checkFlag) {
+          Sfx.play('check');
+          Haptic.check();
+          Feedback.flash('check');
+          Feedback.shake('m');
+        }
         maybeAiTurn();
       });
     } else {
@@ -463,6 +524,13 @@
     var h = bd.history[bd.history.length - 1];
     if (!h || !bd.piece(h[2], h[3])) { if (done) done(); return; }
     Sfx.play(h[4] ? 'capture' : 'move');
+    if (h[4]) {                       // 吃子：金光闪 + 中强度抖动 + 触感
+      Haptic.capture();
+      Feedback.flash('capture');
+      Feedback.shake('m');
+    } else {
+      Haptic.move();
+    }
     anim = {
       type: 'slide', started: performance.now(), dur: 220,
       fx: h[0], fy: h[1], tx: h[2], ty: h[3],
@@ -535,6 +603,21 @@
       }
     }
     anim.raf = requestAnimationFrame(tick);
+  }
+
+  /** 鼠标悬停高亮：仅在象棋 + 轮到玩家 + 无动画时生效，更新 hoverCell 后重绘。 */
+  function onBoardHover(ev) {
+    if (!game || game.finished || thinking || anim || !isXiangqi()) return;
+    if (!isHumanTurn()) {
+      if (hoverCell) { hoverCell = null; paint(); }
+      return;
+    }
+    var pos = canvasPos(ev);
+    var g = hitGrid(pos.x, pos.y);
+    var changed = (g && (!hoverCell || hoverCell.x !== g.x || hoverCell.y !== g.y)) ||
+                  (!g && hoverCell);
+    hoverCell = g;
+    if (changed && !anim) paint();
   }
 
   function onBoardClick(ev) {
@@ -891,7 +974,12 @@
         updateStatus();
         refreshButtons();
         if (game.finished) { finishGame(); return; }
-        if (game.board.checkFlag) Sfx.play('check');
+        if (game.board.checkFlag) {
+          Sfx.play('check');
+          Haptic.check();
+          Feedback.flash('check');
+          Feedback.shake('m');
+        }
         maybeAiTurn();                        // 连锁：机机/观战模式
       });
       return;
@@ -911,9 +999,18 @@
     paint();
     updateStatus();
     refreshButtons();
-    // 胜负音效：只在人机模式且有明确胜者时响（双人模式不替玩家庆祝）
+    // 胜负音效 + 触感 + 闪光：只在人机模式且有明确胜者时响（双人模式不替玩家庆祝）
     if (mode === 'human_ai' && game.winner != null) {
-      Sfx.play(game.winner === humanSide ? 'win' : 'lose');
+      var won = (game.winner === humanSide);
+      Sfx.play(won ? 'win' : 'lose');
+      (won ? Haptic.win : Haptic.lose)();
+      Feedback.flash(won ? 'win' : 'lose');
+      Feedback.shake('l');
+    }
+    if (game.reason === '将死') {            // 将死（杀棋）：最强反馈补一刀
+      Feedback.flash('checkmate');
+      Feedback.shake('l');
+      Haptic.check();
     }
     var rec = game.toRecord();
     if (rec.result !== 'ABORT') {
@@ -1203,6 +1300,10 @@
 
     canvas.addEventListener('click', onBoardClick);
     canvas.addEventListener('touchstart', function (e) { onBoardClick(e); }, { passive: false });
+    canvas.addEventListener('mousemove', onBoardHover);
+    canvas.addEventListener('mouseleave', function () {
+      if (hoverCell) { hoverCell = null; if (isXiangqi() && !anim) paint(); }
+    });
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { confirmStones(); }
