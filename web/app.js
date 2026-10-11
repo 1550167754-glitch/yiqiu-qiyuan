@@ -96,7 +96,11 @@
       var c = actx(); if (!c) return;
       var t0 = c.currentTime + 0.01 + (delayMs ? delayMs / 1000 : 0);
       if (kind === 'move') { knock(c, t0, 1500, 0.32); thump(c, t0, 210, 85, 0.28, 0.10); }
-      else if (kind === 'capture') { knock(c, t0, 950, 0.48); thump(c, t0, 165, 70, 0.40, 0.13); }
+      else if (kind === 'capture') {
+        knock(c, t0, 950, 0.48);
+        thump(c, t0, 165, 70, 0.40, 0.13);   // 主体低频（保持原味）
+        thump(c, t0, 82, 36, 0.30, 0.20);    // 重低音(亚低频)层：略微加重，收紧衰减不轰头
+      }
       else if (kind === 'select') { knock(c, t0, 2100, 0.14); }
       else if (kind === 'check') { tone(c, t0, 660, 0.12, 0.20); tone(c, t0 + 0.11, 880, 0.16, 0.20); }
       else if (kind === 'win') { tone(c, t0, 523, 0.14, 0.22); tone(c, t0 + 0.13, 659, 0.14, 0.22); tone(c, t0 + 0.26, 784, 0.22, 0.24); }
@@ -162,6 +166,7 @@
   var mode = 'human_ai';
   var difficulty = 'medium';
   var themeName = V.THEME_NAMES[0];
+  var pieceStyle = '木艺';          // 棋子材质（默认=原观感，兼容旧存档）
   var selected = [];              // 连珠类：待确认落点；象棋：至多一项（选中的子）
   var thinking = false;
   var aiGen = 0;                  // AI 代数：悔棋/重开后作废旧结果
@@ -243,7 +248,7 @@
           });
         }
         if (kind && bd.inCheck(side)) fx.check = { x: kind[0], y: kind[1] };
-        xqView.render(ctx, bd, fx, themeName);
+        xqView.render(ctx, bd, fx, themeName, pieceStyle);
       } else {
         // 出生动画期间：动画中的那几枚子从 history 层摘掉（它们已在盘上），
         // 改由 ghosts 层按 birth 进度画缩放入场，否则会出现"整子+缩放影子"重影。
@@ -256,7 +261,7 @@
           winLine: game.winLine || null,
           ghosts: extraGhosts || (anim ? anim.ghosts : null)
         };
-        view.render(ctx, st, themeName);
+        view.render(ctx, st, themeName, pieceStyle);
       }
     } catch (err) {
       console.error('render failed', err);
@@ -313,7 +318,7 @@
 
     Store.saveSettings({
       variant: variant, mode: mode, difficulty: difficulty,
-      side: $('side').value, theme: themeName,
+      side: $('side').value, theme: themeName, pieceStyle: pieceStyle,
       sound: $('chkSound').checked
     });
 
@@ -563,7 +568,7 @@
         piece: anim.piece, fx: anim.fx, fy: anim.fy, tx: anim.tx, ty: anim.ty,
         t: anim.t, captured: anim.captured
       }
-    }, themeName);
+    }, themeName, pieceStyle);
   }
 
   /**
@@ -1261,11 +1266,11 @@
         }
       }
       v.flipped = xqFlipped;
-      v.render(ctx, b, fx, themeName);
+      v.render(ctx, b, fx, themeName, pieceStyle);
     } else {
       var hist = b.history;
       var last2 = hist.length ? hist[hist.length - 1] : null;   // [x,y,color]
-      v.render(ctx, { history: hist, last: last2, selected: [], winLine: null, ghosts: null }, themeName);
+      v.render(ctx, { history: hist, last: last2, selected: [], winLine: null, ghosts: null }, themeName, pieceStyle);
     }
   }
 
@@ -1469,7 +1474,7 @@
       moves: null,
       check: null,
       ghosts: anim ? anim.ghosts : null
-    });
+    }, themeName, pieceStyle);
   }
 
   // ---------------------------------------------------------------- 战绩页
@@ -1609,6 +1614,14 @@
       sel.appendChild(o);
     });
 
+    // 棋子材质下拉（全部棋种共用）
+    var selPiece = $('pieceStyle');
+    V.PIECE_STYLES.forEach(function (n) {
+      var o = document.createElement('option');
+      o.value = n; o.textContent = n;
+      selPiece.appendChild(o);
+    });
+
     $('mode').onchange = function () {
       // 双人模式隐藏"我执 / AI 难度"（行折叠，非 display 切换）
       $('rowSide').classList.toggle('collapsed', $('mode').value !== 'human_ai');
@@ -1623,6 +1636,11 @@
     $('theme').onchange = function () {
       themeName = $('theme').value; paint();
       canvas.classList.add('theme-pulse');   // 主题/翻转微呼吸
+      setTimeout(function () { canvas.classList.remove('theme-pulse'); }, 240);
+    };
+    $('pieceStyle').onchange = function () {
+      pieceStyle = $('pieceStyle').value; paint();
+      canvas.classList.add('theme-pulse');
       setTimeout(function () { canvas.classList.remove('theme-pulse'); }, 240);
     };
 
@@ -1689,6 +1707,8 @@
       if (s.side) $('side').value = s.side;
       if (s.theme) $('theme').value = s.theme;
       themeName = $('theme').value;
+      if (s.pieceStyle) $('pieceStyle').value = s.pieceStyle;
+      pieceStyle = $('pieceStyle').value || '木艺';
       if (s.sound === false) $('chkSound').checked = false;   // 音效开关记忆
     }
     $('mode').onchange();

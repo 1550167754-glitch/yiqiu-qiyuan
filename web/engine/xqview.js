@@ -52,6 +52,9 @@ var DEFAULT_THEME = '经典原木';
 // 兼容旧引用（xqshot.js 等只取 MARGIN）
 var XQ_THEME = XQ_THEMES[DEFAULT_THEME];
 
+/** 棋子材质（5 种，与 boardview.PIECE_STYLES 同名，下拉框联动） */
+var PIECE_STYLES = ['木艺', '玻璃', '暖玉', '金属', '陶土'];
+
 var MARGIN = 30;
 
 function XqView() {
@@ -263,12 +266,49 @@ XqView.prototype.drawPiece = function (ctx, x, y, piece, opts) {
   ctx.arc(cx, cy, r * 0.93, 0, Math.PI * 2);
   ctx.stroke();
 
-  // 倒角受光：左上一段弧（各向异性，不是塑料 hotspot）
-  ctx.strokeStyle = 'rgba(255,252,240,0.55)';
+  // 倒角受光：左上一段弧（各向异性，不是塑料 hotspot）；哑光材质压低受光
+  var pstyle = opts.pieceStyle || this.pieceStyle || '木艺';
+  ctx.strokeStyle = (pstyle === '陶土') ? 'rgba(255,252,240,0.30)'
+    : (pstyle === '金属' || pstyle === '玻璃') ? 'rgba(255,252,240,0.80)'
+    : 'rgba(255,252,240,0.55)';
   ctx.lineWidth = Math.max(1, r * 0.05);
   ctx.beginPath();
   ctx.arc(cx, cy, r * 0.90, Math.PI * 1.05, Math.PI * 1.62);
   ctx.stroke();
+
+  // 材质表面质感（在字色环之下、字之上）
+  if (pstyle === '玻璃') {
+    if (ctx.createRadialGradient) {
+      var gg = ctx.createRadialGradient(cx - r * 0.30, cy - r * 0.34, r * 0.02, cx - r * 0.30, cy - r * 0.34, r * 0.95);
+      gg.addColorStop(0, 'rgba(255,255,255,0.55)');
+      gg.addColorStop(0.5, 'rgba(255,255,255,0.10)');
+      gg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gg;
+      ctx.beginPath(); ctx.arc(cx, cy, r * 0.95, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (pstyle === '暖玉') {
+    if (ctx.createRadialGradient) {
+      var jg = ctx.createRadialGradient(cx, cy, r * 0.05, cx, cy, r * 0.95);
+      jg.addColorStop(0, 'rgba(255,255,255,0.30)');
+      jg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = jg;
+      ctx.beginPath(); ctx.arc(cx, cy, r * 0.95, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (pstyle === '金属') {
+    ctx.strokeStyle = 'rgba(255,250,235,0.75)';
+    ctx.lineWidth = Math.max(1, r * 0.06);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.84, Math.PI * 1.02, Math.PI * 1.60);
+    ctx.stroke();
+  } else if (pstyle === '陶土') {
+    if (ctx.createRadialGradient) {
+      var cg = ctx.createRadialGradient(cx, cy, r * 0.10, cx, cy, r);
+      cg.addColorStop(0, 'rgba(255,250,240,0.10)');
+      cg.addColorStop(1, 'rgba(0,0,0,0.05)');
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
 
   // 外圈（色随行棋方）+ 内圈
   ctx.strokeStyle = isRed ? t.red : t.black;
@@ -448,9 +488,10 @@ XqView.prototype.drawFx = function (ctx, fx) {
 };
 
 /** 完整绘制：静态层 + 棋子 + 效果层（themeName 与主题下拉联动）。 */
-XqView.prototype.render = function (ctx, board, fx, themeName) {
+XqView.prototype.render = function (ctx, board, fx, themeName, pieceStyle) {
   if (!this.geom) return;
   this.geom.theme = XQ_THEMES[themeName] || XQ_THEMES[DEFAULT_THEME];
+  this.pieceStyle = pieceStyle || '木艺';
   this.drawStatic(ctx);
   var slide = fx && fx.slide;
   for (var y = 0; y < XI.ROWS; y++) {
@@ -482,6 +523,7 @@ module.exports = {
   XqView: XqView,
   XQ_THEME: XQ_THEME,
   XQ_THEMES: XQ_THEMES,
+  PIECE_STYLES: PIECE_STYLES,
   DEFAULT_THEME: DEFAULT_THEME,
   mix: mix,
   MARGIN: MARGIN

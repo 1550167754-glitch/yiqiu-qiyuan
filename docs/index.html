@@ -78,6 +78,9 @@
           <label class="row"><span>棋盘主题</span>
             <select id="theme"></select>
           </label>
+          <label class="row"><span>棋子材质</span>
+            <select id="pieceStyle"></select>
+          </label>
           <label class="row"><span>音效</span>
             <input type="checkbox" id="chkSound" checked>
           </label>
@@ -98,7 +101,7 @@
             <button id="btnResign" class="btn danger">认输</button>
             <button id="btnFlip" class="btn wide" style="display:none">翻转棋盘</button>
           </div>
-          <p class="hint" id="hint">点击棋盘选点，选满自动落子；也可选 1 子后点「结束本回合」。</p>
+          <p class="hint" id="hint">在棋盘上点选落点，选满后自动落下；本回合只想走一枚时，可点「结束本回合」。</p>
         </div>
 
         <div class="card" id="cardRecord" hidden>

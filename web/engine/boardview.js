@@ -46,6 +46,9 @@ var THEMES = {
 };
 var THEME_NAMES = Object.keys(THEMES);
 
+/** 棋子材质（5 种，全部棋种共用同一套名称，下拉框直接联动） */
+var PIECE_STYLES = ['木艺', '玻璃', '暖玉', '金属', '陶土'];
+
 /**
  * 计算几何：把棋盘等比放进 width×height，返回像素布局。
  * 与桌面版一样"按 min(可用宽,高) 等比居中"，保证任何屏幕都完整显示不变形。
@@ -178,27 +181,32 @@ View.prototype.drawStone = function (ctx, x, y, color, opts) {
   ctx.save ? ctx.save() : null;
   if (ctx.globalAlpha !== undefined) ctx.globalAlpha = alpha;
 
-  // 投影
+  // 投影（所有材质一致）
   ctx.fillStyle = 'rgba(0,0,0,0.30)';
   ctx.beginPath();
   ctx.arc(c.cx, cy + r * 0.16, r * 0.98, 0, Math.PI * 2);
   ctx.fill();
 
   var black = (color === 1 || color === 'black');
+  var style = opts.pieceStyle || this.pieceStyle || '木艺';
+  var g0x = c.cx - r * 0.34, g0y = cy - r * 0.38;   // 光源（左上）
+
+  // 每种材质给出：球面渐变色档 + 描边色 + 高光处理
+  var body = black
+    ? { wood: ['#5A6678', '#242A33', '#05070A'], glass: ['#93A4B8', '#2E3744', '#0A0E14'],
+        jade: ['#4E5A68', '#2A313B', '#141821'], metal: ['#6F7A8A', '#333B47', '#0C1016'],
+        clay: ['#3C434E', '#23272F', '#101317'] }
+    : { wood: ['#FFFFFF', '#F3EFE4', '#B9B0A0'], glass: ['#FFFFFF', '#EAF2F8', '#CAD4DE'],
+        jade: ['#FBF7EC', '#EDE6D6', '#C9C2B0'], metal: ['#FFFFFF', '#DDE3EA', '#AEB6C0'],
+        clay: ['#F4EFE4', '#E4DCCB', '#B6AD9C'] };
+  var stops = body[style] || body.wood;
+
   // 球面径向渐变（光源左上）
   if (ctx.createRadialGradient) {
-    var grad = ctx.createRadialGradient(
-      c.cx - r * 0.34, cy - r * 0.38, r * 0.10,
-      c.cx, cy, r * 1.05);
-    if (black) {
-      grad.addColorStop(0, '#5A6678');
-      grad.addColorStop(0.45, '#242A33');
-      grad.addColorStop(1, '#05070A');
-    } else {
-      grad.addColorStop(0, '#FFFFFF');
-      grad.addColorStop(0.55, '#F3EFE4');
-      grad.addColorStop(1, '#B9B0A0');
-    }
+    var grad = ctx.createRadialGradient(g0x, g0y, r * 0.10, c.cx, cy, r * 1.05);
+    grad.addColorStop(0, stops[0]);
+    grad.addColorStop(style === 'metal' ? 0.40 : 0.55, stops[1]);
+    grad.addColorStop(1, stops[2]);
     ctx.fillStyle = grad;
   } else {
     ctx.fillStyle = black ? '#20242C' : '#F3EFE4';
@@ -207,16 +215,68 @@ View.prototype.drawStone = function (ctx, x, y, color, opts) {
   ctx.arc(c.cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // 外缘描边
-  ctx.strokeStyle = black ? 'rgba(0,0,0,0.85)' : 'rgba(94,88,71,0.75)';
+  // 外缘描边（材质决定冷暖与深浅）
+  if (style === '玻璃') {
+    ctx.strokeStyle = black ? 'rgba(180,200,225,0.55)' : 'rgba(150,180,210,0.65)';
+  } else if (style === '金属') {
+    ctx.strokeStyle = black ? 'rgba(150,165,185,0.80)' : 'rgba(170,182,198,0.85)';
+  } else {
+    ctx.strokeStyle = black ? 'rgba(0,0,0,0.85)' : 'rgba(94,88,71,0.75)';
+  }
   ctx.lineWidth = Math.max(1, r * 0.06);
   ctx.stroke();
 
-  // 镜面高光
-  ctx.fillStyle = black ? 'rgba(230,238,248,0.55)' : 'rgba(255,255,255,0.95)';
-  ctx.beginPath();
-  ctx.arc(c.cx - r * 0.33, cy - r * 0.38, r * 0.19, 0, Math.PI * 2);
-  ctx.fill();
+  // 各材质的高光 / 表面质感
+  if (style === '玻璃') {
+    // 强镜面小高光 + 底部环光（通透折射感）
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    ctx.arc(g0x, g0y, r * 0.13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.30)';
+    ctx.lineWidth = Math.max(1, r * 0.05);
+    ctx.beginPath();
+    ctx.arc(c.cx, cy, r * 0.86, Math.PI * 0.20, Math.PI * 0.85);
+    ctx.stroke();
+  } else if (style === '暖玉') {
+    // 柔润内晕（中心微亮，无硬高光）
+    if (ctx.createRadialGradient) {
+      var jg = ctx.createRadialGradient(c.cx, cy, r * 0.05, c.cx, cy, r * 0.95);
+      jg.addColorStop(0, black ? 'rgba(120,140,160,0.22)' : 'rgba(255,250,238,0.30)');
+      jg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = jg;
+      ctx.beginPath();
+      ctx.arc(c.cx, cy, r * 0.95, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.arc(g0x, g0y, r * 0.10, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (style === '金属') {
+    // 锐利小高光 + 近缘亮环（金属反光）
+    ctx.fillStyle = 'rgba(245,248,255,0.92)';
+    ctx.beginPath();
+    ctx.arc(g0x, g0y, r * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(210,220,235,0.55)';
+    ctx.lineWidth = Math.max(1, r * 0.045);
+    ctx.beginPath();
+    ctx.arc(c.cx, cy, r * 0.90, Math.PI * 1.05, Math.PI * 1.65);
+    ctx.stroke();
+  } else if (style === '陶土') {
+    // 漫反射柔光（大、淡、无锐点），哑光陶感
+    ctx.fillStyle = black ? 'rgba(150,160,175,0.22)' : 'rgba(255,255,255,0.40)';
+    ctx.beginPath();
+    ctx.arc(g0x, g0y, r * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // 木艺（默认，保持原观感）
+    ctx.fillStyle = black ? 'rgba(230,238,248,0.55)' : 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    ctx.arc(g0x, g0y, r * 0.19, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   if (ctx.globalAlpha !== undefined) ctx.globalAlpha = 1;
   if (ctx.restore) ctx.restore();
@@ -319,9 +379,10 @@ View.prototype.drawFx = function (ctx, fx) {
  * 完整绘制：静态层 + 所有棋子 + 效果层。
  * state: { history: [[x,y,color]], last, selected, winLine, ghosts }
  */
-View.prototype.render = function (ctx, state, themeName) {
+View.prototype.render = function (ctx, state, themeName, pieceStyle) {
   var t = THEMES[themeName] || THEMES[THEME_NAMES[0]];
   this.theme = t;
+  this.pieceStyle = pieceStyle || '木艺';
   var g = this.geom;
   if (!g) return;
   this.drawStatic(ctx);
@@ -353,6 +414,7 @@ module.exports = {
   View: View,
   THEMES: THEMES,
   THEME_NAMES: THEME_NAMES,
+  PIECE_STYLES: PIECE_STYLES,
   mix: mix,
   GEOM_MARGIN: GEOM_MARGIN
 };
