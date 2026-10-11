@@ -45,8 +45,16 @@ var ZOBRIST = (function () {
   var n = 14 * (COLS * ROWS) + 1;      // 14 类棋子 × 90 格 + 1 个 side-to-move 键
   var table = new Array(n);
   for (var i = 0; i < n; i++) table[i] = rnd();
+  // 第二张**独立**随机表：与 table 合成 ~64bit 键。32bit 单表在数十万节点的中局里
+  // 碰撞概率极高（生日问题），会把"别局的着法/分值"误当成自己的 → 既是棋力隐患，
+  // 也曾直接导致非法着法注入搜索而崩溃。两表独立可把碰撞率降到可忽略。
+  var s2 = 0x9E3779B9 >>> 0;
+  function rnd2() { s2 = (s2 * 1103515245 + 12345) >>> 0; return s2; }
+  var table2 = new Array(n);
+  for (var j = 0; j < n; j++) table2[j] = rnd2();
   return {
     table: table,
+    table2: table2,
     BLACK_TO_MOVE: 14 * (COLS * ROWS)
   };
 })();
@@ -59,6 +67,9 @@ function zobBase(color, kind) {
 }
 function zobAt(color, kind, square) {
   return ZOBRIST.table[zobBase(color, kind) + square];
+}
+function zobAt2(color, kind, square) {
+  return ZOBRIST.table2[zobBase(color, kind) + square];
 }
 
 function opp(color) { return color === RED ? BLACK : RED; }
@@ -442,15 +453,23 @@ XiangqiBoard.prototype.apply = function (frm, to, checkEnd) {
   var captured = this.grid[ty][tx];
   this.history.push([fx, fy, tx, ty, captured]);
 
-  // 增量 Zobrist：撤掉被吃子、移走源、落下目标、翻转走棋方
-  if (captured) this.zobrist ^= zobAt(captured[0], captured[1], ty * COLS + tx);
-  this.zobrist ^= zobAt(moving[0], moving[1], fy * COLS + fx);
-  this.zobrist ^= zobAt(moving[0], moving[1], ty * COLS + tx);
+  // 增量 Zobrist（两张表同步维护）：撤掉被吃子、移走源、落下目标、翻转走棋方
+  var sqF = fy * COLS + fx, sqT = ty * COLS + tx;
+  if (captured) {
+    this.zobrist ^= zobAt(captured[0], captured[1], sqT);
+    this.zobrist2 ^= zobAt2(captured[0], captured[1], sqT);
+  }
+  this.zobrist ^= zobAt(moving[0], moving[1], sqF);
+  this.zobrist2 ^= zobAt2(moving[0], moving[1], sqF);
+  this.zobrist ^= zobAt(moving[0], moving[1], sqT);
+  this.zobrist2 ^= zobAt2(moving[0], moving[1], sqT);
   this.zobrist ^= ZOBRIST.table[ZOBRIST.BLACK_TO_MOVE];
+  this.zobrist2 ^= ZOBRIST.table2[ZOBRIST.BLACK_TO_MOVE];
 
   this.grid[ty][tx] = moving;
   this.grid[fy][fx] = null;
   this.lastMove = [fx, fy, tx, ty];
+  this.turn = opp(this.turn);      // 先换手：保证 undo 永远对称（含"吃将提前返回"这条路径）
 
   if (captured !== null && captured[1] === KING) {
     this.gameOver = true;
@@ -458,7 +477,6 @@ XiangqiBoard.prototype.apply = function (frm, to, checkEnd) {
     return captured;
   }
 
-  this.turn = opp(this.turn);
   if (checkEnd === false) return captured;
 
   this.checkFlag = this.inCheck(this.turn);
@@ -477,10 +495,17 @@ XiangqiBoard.prototype.undo = function () {
   var moving = this.grid[ty][tx];
 
   // 逆推 Zobrist（与 apply 的逆操作，XOR 自反）
+  var sqF = fy * COLS + fx, sqT = ty * COLS + tx;
   this.zobrist ^= ZOBRIST.table[ZOBRIST.BLACK_TO_MOVE];
-  this.zobrist ^= zobAt(moving[0], moving[1], ty * COLS + tx);
-  this.zobrist ^= zobAt(moving[0], moving[1], fy * COLS + fx);
-  if (captured) this.zobrist ^= zobAt(captured[0], captured[1], ty * COLS + tx);
+  this.zobrist2 ^= ZOBRIST.table2[ZOBRIST.BLACK_TO_MOVE];
+  this.zobrist ^= zobAt(moving[0], moving[1], sqT);
+  this.zobrist2 ^= zobAt2(moving[0], moving[1], sqT);
+  this.zobrist ^= zobAt(moving[0], moving[1], sqF);
+  this.zobrist2 ^= zobAt2(moving[0], moving[1], sqF);
+  if (captured) {
+    this.zobrist ^= zobAt(captured[0], captured[1], sqT);
+    this.zobrist2 ^= zobAt2(captured[0], captured[1], sqT);
+  }
 
   this.grid[fy][fx] = moving;
   this.grid[ty][tx] = captured;
@@ -494,25 +519,33 @@ XiangqiBoard.prototype.undo = function () {
 
 /** 从当前 grid/turn 重新算一遍 Zobrist（用于从快照重建的局面，如 Worker）。 */
 XiangqiBoard.prototype.recomputeZobrist = function () {
-  var h = 0;
+  var h = 0, h2 = 0;
   for (var y = 0; y < ROWS; y++) {
     for (var x = 0; x < COLS; x++) {
       var p = this.grid[y][x];
       if (!p) continue;
-      h ^= zobAt(p[0], p[1], y * COLS + x);
+      var sq = y * COLS + x;
+      h ^= zobAt(p[0], p[1], sq);
+      h2 ^= zobAt2(p[0], p[1], sq);
     }
   }
-  if (this.turn === BLACK) h ^= ZOBRIST.table[ZOBRIST.BLACK_TO_MOVE];
+  if (this.turn === BLACK) {
+    h ^= ZOBRIST.table[ZOBRIST.BLACK_TO_MOVE];
+    h2 ^= ZOBRIST.table2[ZOBRIST.BLACK_TO_MOVE];
+  }
   this.zobrist = h;
+  this.zobrist2 = h2;
 };
 
 /** 空着（null move）：只翻转走棋方，供空着裁剪使用。 */
 XiangqiBoard.prototype.applyNullMove = function () {
   this.zobrist ^= ZOBRIST.table[ZOBRIST.BLACK_TO_MOVE];
+  this.zobrist2 ^= ZOBRIST.table2[ZOBRIST.BLACK_TO_MOVE];
   this.turn = opp(this.turn);
 };
 XiangqiBoard.prototype.undoNullMove = function () {
   this.zobrist ^= ZOBRIST.table[ZOBRIST.BLACK_TO_MOVE];
+  this.zobrist2 ^= ZOBRIST.table2[ZOBRIST.BLACK_TO_MOVE];
   this.turn = opp(this.turn);
 };
 
@@ -840,13 +873,24 @@ XqAI.prototype.orderMoves = function (board, moves, color, ply) {
   return scored.map(function (t) { return t[0]; });
 };
 
+/**
+ * 把 mv 提到列表最前（用于置换表/上一层最佳着法优先搜索）。
+ *
+ * 【重要】必须**先确认 mv 确实在当前合法着法列表中**再前置 —— 绝不能不检查就插进去。
+ * 早期实现无条件 `out=[mv]`，一旦置换表因 32bit 哈希碰撞给出"别局的着法"，
+ * 这个非法着法就会被 search 拿去 apply，源格为空 → `TypeError` → 浏览器里
+ * worker 报错回退同步、同步又崩 → 界面永久卡在"AI 思考中"。
+ */
 XqAI.prototype._moveToFront = function (moves, mv) {
-  var out = [mv];
+  if (!mv) return moves;
+  var idx = -1;
   for (var i = 0; i < moves.length; i++) {
     var m = moves[i];
-    if (m[0] === mv[0] && m[1] === mv[1] && m[2] === mv[2] && m[3] === mv[3]) continue;
-    out.push(m);
+    if (m[0] === mv[0] && m[1] === mv[1] && m[2] === mv[2] && m[3] === mv[3]) { idx = i; break; }
   }
+  if (idx <= 0) return moves;            // 不在列表中（或本就在首位）→ 原样返回
+  var out = [mv];
+  for (var j = 0; j < moves.length; j++) { if (j !== idx) out.push(moves[j]); }
   return out;
 };
 
@@ -945,17 +989,19 @@ XqAI.prototype.search = function (board, color, depth, alpha, beta, ply) {
       : xqEvaluate(board) * (color === RED ? 1 : -1);
   }
 
-  // 置换表
+  // 置换表（键 = zobrist，附加 zobrist2 做二次校验：两者都对上才采用，杜绝 32bit 碰撞）
   var key = board.zobrist;
   var hit = this.tt[key];
   var ttMove = null;
-  if (hit) {
+  if (hit && hit[4] === board.zobrist2) {
     ttMove = hit[3];
     if (hit[0] >= depth) {
       if (hit[1] === 0) return hit[2];
       else if (hit[1] === 1 && hit[2] >= beta) return hit[2];
       else if (hit[1] === 2 && hit[2] <= alpha) return hit[2];
     }
+  } else {
+    hit = null;                       // 碰撞槽位：当未命中处理，后续可安全覆盖
   }
 
   // 空着裁剪（Null-Move Pruning，R=2）：非将军、深度足够、且非逼和局面时，
@@ -983,6 +1029,7 @@ XqAI.prototype.search = function (board, color, depth, alpha, beta, ply) {
 
   for (var i = 0; i < moves.length; i++) {
     var mv = moves[i];
+    if (!board.grid[mv[1]][mv[0]]) continue;   // 源格无子（防御：任何非法着法一律跳过，绝不 apply）
     var captured = board.grid[mv[3]][mv[2]];
     var isCapture = !!captured;
 
@@ -1040,7 +1087,10 @@ XqAI.prototype.search = function (board, color, depth, alpha, beta, ply) {
     if (bestVal <= alphaOrig) flag = 2;
     else if (bestVal >= beta) flag = 1;
     var old = this.tt[key];
-    if (!old || old[0] <= depth) this.tt[key] = [depth, flag, bestVal, bestMove];
+    // 同一位姿才按深度取舍；若槽位属于碰撞的"别局"，直接覆盖
+    if (!old || old[4] !== board.zobrist2 || old[0] <= depth) {
+      this.tt[key] = [depth, flag, bestVal, bestMove, board.zobrist2];
+    }
   }
   return bestVal;
 };
@@ -1112,6 +1162,7 @@ XqAI.prototype.getMove = function (board) {
 
     for (var m = 0; m < localOrder.length; m++) {
       var mv2 = localOrder[m];
+      if (!board.grid[mv2[1]][mv2[0]]) continue;   // 防御：源格无子则跳过
       board.apply([mv2[0], mv2[1]], [mv2[2], mv2[3]]);
       if (board.inCheck(color)) { board.undo(); continue; }
       var val;
@@ -1130,6 +1181,7 @@ XqAI.prototype.getMove = function (board) {
       alpha = -INF; beta = INF; iterBest = null; iterScore = -INF;
       for (var m2 = 0; m2 < localOrder.length; m2++) {
         var mv3 = localOrder[m2];
+        if (!board.grid[mv3[1]][mv3[0]]) continue;   // 防御：源格无子则跳过
         board.apply([mv3[0], mv3[1]], [mv3[2], mv3[3]]);
         if (board.inCheck(color)) { board.undo(); continue; }
         var val2;

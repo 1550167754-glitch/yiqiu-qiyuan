@@ -897,23 +897,35 @@
     }
     var aiStones = null;
     var aiPlaced = [];
-    if (isXiangqi()) {
-      aiStones = game.aiTurn();
-    } else {
-      var eng = game.currentPlayer().engine;
-      var stones = eng ? eng.getMove(game.board, game.current, game.maxStones) : [];
-      var color = game.current;
-      for (var i = 0; i < stones.length; i++) {
-        var r = game.place(stones[i][0], stones[i][1]);
-        if (!r.ok) break;
-        aiPlaced.push({ x: stones[i][0], y: stones[i][1], color: color });
-        if (r.line) break;
+    var logBefore = isXiangqi() ? game.movesLog.length : 0;
+    try {
+      if (isXiangqi()) {
+        aiStones = game.aiTurn();
+        if (!aiStones || !aiStones.length) aiStones = applyFallbackXiangqiMove();
+      } else {
+        var eng = game.currentPlayer().engine;
+        var stones = eng ? eng.getMove(game.board, game.current, game.maxStones) : [];
+        var color = game.current;
+        for (var i = 0; i < stones.length; i++) {
+          var r = game.place(stones[i][0], stones[i][1]);
+          if (!r.ok) break;
+          aiPlaced.push({ x: stones[i][0], y: stones[i][1], color: color });
+          if (r.line) break;
+        }
+        game.endRound();     // 无论落子成败都要换手，否则会卡在"AI 该走却轮不到人"
+        aiStones = stones;
       }
-      game.endRound();     // 无论落子成败都要换手，否则会卡在"AI 该走却轮不到人"
-      aiStones = stones;
+    } catch (err) {
+      // 引擎在搜索中途抛异常（历史上因置换表哈希碰撞注入非法着法所致）：
+      // 绝不能把异常抛出去 —— 否则 thinking 永为 true，界面永久卡在"AI 思考中"。
+      console.error('AI 同步搜索异常，改用兜底合法着法', err);
+      if (isXiangqi() && game.movesLog.length === logBefore) {
+        aiStones = applyFallbackXiangqiMove();   // 仅当还没落子才兜底，避免重复走子
+      }
+    } finally {
+      thinking = false;
+      hideOverlay();
     }
-    thinking = false;
-    hideOverlay();
     if (gen !== aiGen) {                    // 期间悔棋/重开了，结果作废
       updateStatus();
       refreshButtons();
@@ -922,50 +934,89 @@
     if (isXiangqi() && (!aiStones || !aiStones.length)) {
       // 象棋 AI 无着可走（理论不该发生）：判终局，绝不卡死
       game.finished = true;
-      game.reason = 'AI 无着可走';
+      game.reason = game.reason || 'AI 无着可走';
     }
     afterAiMoved(aiStones, aiPlaced, gen);
+  }
+
+  /**
+   * 象棋 AI 兜底：引擎抛异常 / 返回非法着法时，随便走一步**合法**着法，
+   * 保证对局能继续、界面绝不会卡在"AI 思考中"。返回 [[fx,fy],[tx,ty]] 或 null。
+   */
+  function applyFallbackXiangqiMove() {
+    if (!game || game.finished) return null;
+    var arr = game.board.legalMoves(game.board.turn);
+    if (!arr || !arr.length) { game.finished = true; game.reason = 'AI 无着可走'; return null; }
+    var fb = arr[0];
+    game.board.apply([fb[0], fb[1]], [fb[2], fb[3]], true);
+    game.movesLog.push(fb);
+    if (game.board.gameOver) {
+      game.finished = true;
+      game.winner = game.board.winner === XQ_RED ? XQ_RED : XQ_BLACK;
+      game.reason = '将死';
+    }
+    return [[fb[0], fb[1]], [fb[2], fb[3]]];
+  }
+
+  /** 校验象棋着法在当前局面是否合法（源格有子 + 在 legalMoves 内）。 */
+  function isLegalXiangqiMove(mv) {
+    if (!mv || !game || !game.board.grid[mv[1]] || !game.board.grid[mv[1]][mv[0]]) return false;
+    var lm = game.board.legalMoves(game.board.turn);
+    for (var i = 0; i < lm.length; i++) {
+      if (lm[i][0] === mv[0] && lm[i][1] === mv[1] && lm[i][2] === mv[2] && lm[i][3] === mv[3]) return true;
+    }
+    return false;
   }
 
   /** 把 worker 回传的着法应用到真实对局（gen 令牌保证局面自请求以来未被改动）。 */
   function applyAiResult(req, res, gen) {
     var aiStones = null;
     var aiPlaced = [];
-    if (req.variant === 'xiangqi') {
-      var mv = res.move;
-      if (mv) {
-        // 与 XiangqiGame.aiTurn 的应用逻辑逐行同源（apply → 记谱 → 判将死）
-        game.board.apply([mv[0], mv[1]], [mv[2], mv[3]], true);
-        game.movesLog.push(mv);
-        if (game.board.gameOver) {
-          game.finished = true;
-          game.winner = game.board.winner === XQ_RED ? XQ_RED : XQ_BLACK;
-          game.reason = '将死';
+    try {
+      if (req.variant === 'xiangqi') {
+        var mv = res.move;
+        if (isLegalXiangqiMove(mv)) {
+          // 与 XiangqiGame.aiTurn 的应用逻辑逐行同源（apply → 记谱 → 判将死）
+          game.board.apply([mv[0], mv[1]], [mv[2], mv[3]], true);
+          game.movesLog.push(mv);
+          if (game.board.gameOver) {
+            game.finished = true;
+            game.winner = game.board.winner === XQ_RED ? XQ_RED : XQ_BLACK;
+            game.reason = '将死';
+          }
+          aiStones = [[mv[0], mv[1]], [mv[2], mv[3]]];
+        } else {
+          console.warn('AI 返回非法/空着法，改用兜底合法着法', mv);
+          aiStones = applyFallbackXiangqiMove();
         }
-        aiStones = [[mv[0], mv[1]], [mv[2], mv[3]]];
+      } else {
+        var stones = res.stones || [];
+        var color = game.current;
+        for (var i = 0; i < stones.length; i++) {
+          var r = game.place(stones[i][0], stones[i][1]);
+          if (!r.ok) break;
+          aiPlaced.push({ x: stones[i][0], y: stones[i][1], color: color });
+          if (r.line) break;
+        }
+        game.endRound();
+        aiStones = stones;
       }
-    } else {
-      var stones = res.stones || [];
-      var color = game.current;
-      for (var i = 0; i < stones.length; i++) {
-        var r = game.place(stones[i][0], stones[i][1]);
-        if (!r.ok) break;
-        aiPlaced.push({ x: stones[i][0], y: stones[i][1], color: color });
-        if (r.line) break;
-      }
-      game.endRound();
-      aiStones = stones;
+    } catch (err) {
+      console.error('应用 AI 结果异常，改用兜底', err);
+      if (req.variant === 'xiangqi') aiStones = applyFallbackXiangqiMove();
+    } finally {
+      thinking = false;
+      hideOverlay();
     }
-    thinking = false;
-    hideOverlay();
     if (gen !== aiGen) {                    // 期间悔棋/重开了，结果作废
       updateStatus();
       refreshButtons();
       return;
     }
     if (isXiangqi() && (!aiStones || !aiStones.length)) {
+      // 兜底也没能走子（理论上只剩"确实无着"）：判终局，绝不卡死
       game.finished = true;
-      game.reason = 'AI 无着可走';
+      game.reason = game.reason || 'AI 无着可走';
     }
     afterAiMoved(aiStones, aiPlaced, gen);
   }
