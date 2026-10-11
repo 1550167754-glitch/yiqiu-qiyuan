@@ -2709,10 +2709,15 @@ function XqAI(level, seed) {
   this.level = level || 'medium';
   // 三档：深度上限 + 时限(ms) + 是否开启静态搜索
   // hard 档加深（配合空着裁剪/LMR，实际搜索深度远超 6 层）且不超时（受 deadline 保护）
+  // 难度梯度（2026-10-11 重定标）：
+  //   easy   = 原 medium（depth6/1800），玩家要求"简单不能再智障"，故抬到旧中等水平；
+  //   medium = 介于旧中等与 hard 之间（depth8/3000）；
+  //   hard   = 在原 depth10/5000 基础上再上一个高度（depth16/8000，配合空着裁剪/LMR
+  //            实际搜到的层数远超 depth 上限，时限才是真瓶颈，故主要加时限）。
   var prof = {
-    easy:   { depth: 2, time: 400,  quiesce: true, rand: true },
-    medium: { depth: 6, time: 1800, quiesce: true, rand: false },
-    hard:   { depth: 10, time: 5000, quiesce: true, rand: false }
+    easy:   { depth: 6,  time: 1800, quiesce: true, rand: false },
+    medium: { depth: 8,  time: 3000, quiesce: true, rand: false },
+    hard:   { depth: 16, time: 8000, quiesce: true, rand: false }
   }[this.level] || { depth: 6, time: 1800, quiesce: true, rand: false };
   this.maxDepth = prof.depth;
   this.timeLimit = prof.time;
@@ -3024,8 +3029,8 @@ XqAI.prototype.getMove = function (board) {
   if (!roots.length) return null;
   if (roots.length === 1) return roots[0];
 
-  // 开局库：仅在前若干手且实际对局完全吻合某条线前缀时启用
-  if (this.useBook && board.history.length <= 12 && this.level !== 'easy') {
+  // 开局库：仅在前若干手且实际对局完全吻合某条线前缀时启用（三档都走，开局更稳）
+  if (this.useBook && board.history.length <= 12) {
     var bm = this._bookMove(board);
     if (bm) {
       for (var li = 0; li < roots.length; li++) {
@@ -3036,22 +3041,6 @@ XqAI.prototype.getMove = function (board) {
         }
       }
     }
-  }
-
-  // 简单档：只看一手吃子收益 + 少量随机，给玩家留活路
-  if (this.level === 'easy') {
-    var best = roots[0], bestV = -INF;
-    for (var i = 0; i < roots.length; i++) {
-      var mv = roots[i];
-      var cap = board.grid[mv[3]][mv[2]];
-      var v = cap ? (PIECE_VALUE[cap[1]] || 0) : 0;
-      v += this._rng() * 30;                       // 随机扰动，别每局一样
-      board.apply([mv[0], mv[1]], [mv[2], mv[3]]);
-      if (board.inCheck(opp(color))) v += 40;
-      board.undo();
-      if (v > bestV) { bestV = v; best = mv; }
-    }
-    return best;
   }
 
   var bestMove = roots[0];

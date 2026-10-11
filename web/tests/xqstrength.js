@@ -155,21 +155,45 @@ function materialRed(b) {
 })();
 
 // ---------------------------------------------------------------- 7. 自对弈不崩、能终局
+// 注意：easy 已重定标为"原 medium"（depth6/1800 全量搜索），比旧 easy（depth2/浅搜索）慢得多，
+// 故这里把每手时限压到 400ms，让 20 手能在 20s 预算内跑完；断言允许"正常推进到 20 手"或"提前分出胜负"。
 (function () {
   var b = new X.XiangqiBoard();
   var aiR = new X.XqAI('easy', 21);
   var aiB = new X.XqAI('easy', 22);
+  aiR.timeLimit = 400; aiB.timeLimit = 400;
   var moves = 0;
   var t = Date.now();
-  while (!b.gameOver && moves < 120 && Date.now() - t < 20000) {
+  while (!b.gameOver && moves < 200 && Date.now() - t < 20000) {
     var ai = (b.turn === X.RED) ? aiR : aiB;
     var mv = ai.getMove(b);
     if (!mv) break;
     b.apply([mv[0], mv[1]], [mv[2], mv[3]], true);
     moves++;
   }
-  ok('快棋自对弈能正常推进', moves >= 20,
+  ok('快棋自对弈能正常推进', moves >= 20 || b.gameOver,
     '共 ' + moves + ' 手，终局=' + b.gameOver + ' 胜方=' + (b.winner || '未分'));
+})();
+
+// ---------------------------------------------------------------- 8. 难度梯度回归（2026-10-11 重定标）
+// easy 必须达到"旧 medium"水平；hard 必须在旧 hard 之上。锁死三档的 depth/time，
+// 防止日后手滑把难度调回"智障"。
+(function () {
+  var e = new X.XqAI('easy'), m = new X.XqAI('medium'), h = new X.XqAI('hard');
+  ok('难度·简单=旧中等(depth6/1800)', e.maxDepth === 6 && e.timeLimit === 1800,
+    'easy depth=' + e.maxDepth + ' time=' + e.timeLimit);
+  ok('难度·中等介于其间(depth8/3000)', m.maxDepth === 8 && m.timeLimit === 3000,
+    'medium depth=' + m.maxDepth + ' time=' + m.timeLimit);
+  ok('难度·困难再上一层(depth16/8000)', h.maxDepth === 16 && h.timeLimit === 8000,
+    'hard depth=' + h.maxDepth + ' time=' + h.timeLimit);
+  // easy 不再走"只看吃子+随机"的浅层分支：开局应走开局库（full-search 路径），返回合法着法
+  var sb = new X.XiangqiBoard();
+  var em = new X.XqAI('easy', 99);
+  var emv = em.getMove(sb);
+  var legal = sb.legalMoves(X.RED).some(function (lm) {
+    return lm[0] === emv[0] && lm[1] === emv[1] && lm[2] === emv[2] && lm[3] === emv[3];
+  });
+  ok('难度·简单走全量搜索(返回合法着法)', !!emv && legal, 'easy 首着=' + mvStr(emv));
 })();
 
 console.log('\n合计：' + passed + ' passed, ' + failed + ' failed');

@@ -504,3 +504,64 @@ main { flex: 1; padding: 16px; }
     transition: none !important;
   }
 }
+
+/* ====================================================================
+   复盘录像弹窗（终局后"复盘录像"按钮打开）
+   ==================================================================== */
+.replay-modal {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 18, 24, 0.72);
+  backdrop-filter: blur(6px);
+  padding: 16px;
+}
+.replay-modal.is-hidden { display: none; }
+.replay-panel {
+  width: min(720px, 96vw);
+  max-height: 94vh; overflow: auto;
+  background: var(--c-panel);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: grid; gap: 12px;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.5);
+  animation: replayPop .35s cubic-bezier(.2, .9, .3, 1.2) both;
+}
+@keyframes replayPop {
+  0%   { opacity: 0; transform: translateY(14px) scale(.96); }
+  100% { opacity: 1; transform: none; }
+}
+.replay-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.replay-title { font-weight: 700; font-size: 16px; letter-spacing: .5px; }
+.replay-sub { color: var(--c-dim); font-size: 12px; margin-top: 2px; }
+.replay-boardwrap {
+  background: var(--c-panel-2);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 8px;
+  display: grid; place-items: center;
+}
+#replayCanvas {
+  display: block; width: 100%; height: auto;
+  max-height: 58vh; border-radius: 8px; touch-action: manipulation;
+}
+.replay-ctrls { display: grid; gap: 10px; }
+.replay-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.replay-row .btn { width: auto; flex: 0 0 auto; }
+.replay-row .btn.small { padding: 7px 16px; font-size: 13px; }
+.replay-speed-label { color: var(--c-dim); font-size: 13px; flex: 0 0 auto; }
+.replay-speed .btn.is-on {
+  border-color: var(--c-accent);
+  background: rgba(232, 179, 75, 0.18);
+  color: var(--c-text); font-weight: 700;
+}
+.replay-seek {
+  flex: 1 1 auto; min-width: 0;
+  height: 6px; border-radius: 999px; cursor: pointer;
+  accent-color: var(--c-accent);
+}
+/* 窄屏：弹窗内按钮铺满，避免挤压 */
+@media (max-width: 520px) {
+  .replay-row .btn.small { flex: 1 1 auto; }
+  .replay-speed { justify-content: space-between; }
+}

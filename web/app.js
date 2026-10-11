@@ -1080,13 +1080,237 @@
       '<div class="sub">' + sub + '</div>' +
       '<div class="row">' +
       '<button class="btn primary" id="bnAgain" style="width:auto">再来一局</button>' +
-      '<button class="btn" id="bnUndoEnd" style="width:auto">悔棋看看</button>' +
+      '<button class="btn" id="bnReplay" style="width:auto">复盘录像</button>' +
       '</div>'
     );
     var a = $('bnAgain');
-    var u = $('bnUndoEnd');
+    var rp = $('bnReplay');
     if (a) a.onclick = function () { newGame(); };
-    if (u) u.onclick = function () { setBanner(''); doUndo(); };
+    if (rp) rp.onclick = function () { openReplay(); };
+  }
+
+  // ---------------------------------------------------------------- 复盘录像
+  // 终局后点「复盘录像」打开：在独立画布上重建每一手局面，支持 播放/暂停/单步/进度/快慢。
+  var replay = null;
+
+  function ensureReplayDom() {
+    if ($('replayModal')) return;
+    var m = document.createElement('div');
+    m.className = 'replay-modal is-hidden';
+    m.id = 'replayModal';
+    m.setAttribute('role', 'dialog');
+    m.setAttribute('aria-modal', 'true');
+    m.setAttribute('aria-label', '复盘录像');
+    m.innerHTML =
+      '<div class="replay-panel">' +
+        '<div class="replay-head">' +
+          '<div>' +
+            '<div class="replay-title">复盘录像</div>' +
+            '<div class="replay-sub" id="replaySub">第 0 / 0 手</div>' +
+          '</div>' +
+          '<button class="btn small" id="replayClose" style="width:auto">关闭</button>' +
+        '</div>' +
+        '<div class="replay-boardwrap"><canvas id="replayCanvas"></canvas></div>' +
+        '<div class="replay-ctrls">' +
+          '<div class="replay-row">' +
+            '<button class="btn small" id="replayPrev" style="width:auto">上一步</button>' +
+            '<button class="btn primary small" id="replayPlay" style="width:auto">播放</button>' +
+            '<button class="btn small" id="replayNext" style="width:auto">下一步</button>' +
+          '</div>' +
+          '<div class="replay-row">' +
+            '<input type="range" id="replaySeek" class="replay-seek" min="0" max="0" value="0" step="1">' +
+          '</div>' +
+          '<div class="replay-row replay-speed" id="replaySpeed">' +
+            '<span class="replay-speed-label">速度</span>' +
+            '<button class="btn small" data-ms="1400">慢</button>' +
+            '<button class="btn small is-on" data-ms="750">中</button>' +
+            '<button class="btn small" data-ms="350">快</button>' +
+            '<button class="btn small" data-ms="140">极快</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(m);
+
+    $('replayClose').onclick = closeReplay;
+    $('replayPrev').onclick = function () { replayStop(); replayStep(-1); };
+    $('replayNext').onclick = function () { replayStop(); replayStep(1); };
+    $('replayPlay').onclick = replayToggle;
+    $('replaySeek').addEventListener('input', function (e) {
+      replayStop();
+      replaySeek(parseInt(e.target.value, 10) || 0);
+    });
+    var sp = $('replaySpeed');
+    sp.querySelectorAll('button[data-ms]').forEach(function (b) {
+      b.onclick = function () {
+        sp.querySelectorAll('button[data-ms]').forEach(function (x) { x.classList.remove('is-on'); });
+        b.classList.add('is-on');
+        if (replay) replay.speed = parseInt(b.getAttribute('data-ms'), 10);
+        if (replay && replay.playing) { replayStop(); replayPlay(); }   // 立即套用新速度
+      };
+    });
+    // 点遮罩空白处关弹窗
+    m.addEventListener('click', function (e) { if (e.target === m) closeReplay(); });
+    // 复盘弹窗开着时，窗口尺寸变化要跟着重排画布
+    window.addEventListener('resize', function () {
+      if (replay && !$('replayModal').classList.contains('is-hidden')) {
+        replayResize();
+        replayRender();
+      }
+    });
+    // Esc 关弹窗
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && replay && !$('replayModal').classList.contains('is-hidden')) closeReplay();
+    });
+  }
+
+  function openReplay() {
+    if (!game || !game.movesLog || !game.movesLog.length) return;   // 无棋谱可复
+    ensureReplayDom();
+    var moves, board;
+    if (isXiangqi()) {
+      moves = game.movesLog.map(function (m) { return [m[0], m[1], m[2], m[3]]; });
+      board = new X.XiangqiBoard();
+    } else {
+      moves = game.movesLog.map(function (m) { return [m[0], m[1], m[2]]; });   // [x,y,color]
+      board = new B.Board(game.board.size, game.board.winCount);
+    }
+    var speedBtn = $('replaySpeed').querySelector('button.is-on');
+    var view = isXiangqi() ? new XV.XqView() : new V.View();
+    replay = {
+      moves: moves, board: board, index: 0, playing: false,
+      timer: null, speed: speedBtn ? parseInt(speedBtn.getAttribute('data-ms'), 10) : 750,
+      view: view
+    };
+    replayResize();
+    var seek = $('replaySeek');
+    seek.max = moves.length;
+    seek.value = 0;
+    $('replayModal').classList.remove('is-hidden');
+    updatePlayBtn();
+    replayRender();
+    updateReplaySub();
+  }
+
+  function closeReplay() {
+    if (replay && replay.timer) clearTimeout(replay.timer);
+    replay = null;
+    var modal = $('replayModal');
+    if (modal) modal.classList.add('is-hidden');
+  }
+
+  // 按当前 index 重建棋盘（最稳：不依赖 undo 状态链），再渲染
+  function replaySeek(idx) {
+    if (!replay) return;
+    idx = Math.max(0, Math.min(replay.moves.length, idx | 0));
+    var board = isXiangqi() ? new X.XiangqiBoard() : new B.Board(game.board.size, game.board.winCount);
+    for (var i = 0; i < idx; i++) {
+      var m = replay.moves[i];
+      if (isXiangqi()) board.apply([m[0], m[1]], [m[2], m[3]], false);
+      else board.place(m[0], m[1], m[2]);
+    }
+    replay.board = board;
+    replay.index = idx;
+    $('replaySeek').value = idx;
+    replayRender();
+    updateReplaySub();
+  }
+
+  function replayStep(dir) {
+    if (!replay) return;
+    var ni = replay.index + dir;
+    if (ni < 0 || ni > replay.moves.length) return;
+    replaySeek(ni);
+  }
+
+  function replayResize() {
+    if (!replay) return;
+    var canvas = $('replayCanvas');
+    var wrap = canvas.parentElement;
+    var sp = isXiangqi()
+      ? { cols: X.COLS, rows: X.ROWS, margin: XV.MARGIN }
+      : { cols: replay.board.size, rows: replay.board.size, margin: V.GEOM_MARGIN };
+    var cssW = Math.max(240, Math.min(wrap.clientWidth - 16, 660));
+    var maxH = Math.min(window.innerHeight * 0.58, 540);
+    var cell = Math.min(cssW / (sp.cols - 1 + 0.9), maxH / (sp.rows - 1 + 0.9));
+    var w = cell * (sp.cols - 1) + sp.margin * 2;
+    var h = cell * (sp.rows - 1) + sp.margin * 2;
+    var dpr = Math.min(3, window.devicePixelRatio || 1);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    replay.ctx = canvas.getContext('2d');
+    replay.canvas = canvas;
+    replay.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (isXiangqi()) replay.view.computeGeom(w, h);
+    else replay.view.computeGeom(w, h, sp.cols);
+  }
+
+  function replayRender() {
+    if (!replay) return;
+    var b = replay.board, v = replay.view, ctx = replay.ctx;
+    ctx.clearRect(0, 0, replay.canvas.width, replay.canvas.height);
+    if (isXiangqi()) {
+      var last = b.lastMove;   // [fx,fy,tx,ty] 或 null
+      var fx = { last: last, selected: null, moves: null, ghosts: null, hover: null, check: null };
+      if (last && last[2] !== undefined) {
+        var side = b.turn;
+        if (b.inCheck(side)) {
+          var k = b.findKing(side);
+          if (k) fx.check = { x: k[0], y: k[1] };
+        }
+      }
+      v.flipped = xqFlipped;
+      v.render(ctx, b, fx, themeName);
+    } else {
+      var hist = b.history;
+      var last2 = hist.length ? hist[hist.length - 1] : null;   // [x,y,color]
+      v.render(ctx, { history: hist, last: last2, selected: [], winLine: null, ghosts: null }, themeName);
+    }
+  }
+
+  function replayPlay() {
+    if (!replay) return;
+    if (replay.index >= replay.moves.length) replaySeek(0);   // 播完再点则从头放
+    replay.playing = true;
+    updatePlayBtn();
+    var tick = function () {
+      if (!replay || !replay.playing) return;
+      if (replay.index >= replay.moves.length) { replayStop(); return; }
+      replayStep(1);
+      replay.timer = setTimeout(tick, replay.speed);
+    };
+    replay.timer = setTimeout(tick, replay.speed);
+  }
+
+  function replayStop() {
+    if (!replay) return;
+    replay.playing = false;
+    if (replay.timer) { clearTimeout(replay.timer); replay.timer = null; }
+    updatePlayBtn();
+  }
+
+  function replayToggle() { if (replay && replay.playing) replayStop(); else replayPlay(); }
+
+  function updatePlayBtn() {
+    var btn = $('replayPlay');
+    if (!btn) return;
+    btn.textContent = (replay && replay.playing) ? '暂停' : '播放';
+  }
+
+  function updateReplaySub() {
+    if (!replay) return;
+    var idx = replay.index, total = replay.moves.length;
+    var txt;
+    if (isXiangqi()) {
+      var side = replay.board.turn;
+      var sideName = side === X.RED ? '红方' : '黑方';
+      txt = '第 ' + idx + ' / ' + total + ' 手 · 轮到' + sideName;
+    } else {
+      txt = '第 ' + idx + ' / ' + total + ' 子';
+    }
+    var el = $('replaySub');
+    if (el) el.textContent = txt;
   }
 
   // ---------------------------------------------------------------- 悔棋 + 倒退动画
