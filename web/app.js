@@ -211,6 +211,7 @@
     if (isXiangqi()) xqView.computeGeom(w, h);
     else view.computeGeom(w, h, sp.cols);
     paint();
+    moveIndicator();
   }
 
   /** 像素坐标 → 棋盘格（按当前棋种选对应渲染器）。 */
@@ -704,8 +705,12 @@
     s.pointerEvents = 'none';
     overlayText.textContent = text || 'AI 思考中…';
     overlay.classList.remove('is-hidden');
+    if (boardwrap) boardwrap.classList.add('locked');   // 棋盘锁定：AI 思考期
   }
-  function hideOverlay() { overlay.classList.add('is-hidden'); }
+  function hideOverlay() {
+    if (boardwrap) boardwrap.classList.remove('locked');
+    overlay.classList.add('is-hidden');
+  }
 
   // ------------------------------------------------ Worker（后台搜索，失败自动回退同步）
   // 优先把 AI 搜索交给 Worker（不阻塞主线程，向 exe 版响应手感看齐）；
@@ -1038,22 +1043,35 @@
     if (anim && anim.raf) cancelAnimationFrame(anim.raf);
     anim = null;
     hideOverlay();
+    // 防悔棋动画被"开新局/切棋种"打断后，btnUndo 的 is-loading 永远不解除 → 按钮永久灰死
+    var ub = $('btnUndo'); if (ub) ub.classList.remove('is-loading');
+  }
+
+  /** 按钮错误反馈（红边抖动 0.4s）：用于"点了但当前无法执行"的软错误，让按钮一定有回应。 */
+  function flashBtnError(btn) {
+    if (!btn) return;
+    btn.classList.remove('is-error');
+    void btn.offsetWidth;            // 强制 reflow，保证连续点击也能重放动画
+    btn.classList.add('is-error');
+    setTimeout(function () { btn.classList.remove('is-error'); }, 500);
   }
 
   function doUndo() {
     if (!game || anim) return;
     var toHuman = (mode === 'human_ai');
+    var ub = $('btnUndo');
 
     if (isXiangqi()) { doUndoXiangqi(toHuman); return; }
-    if (!game.board.moveCount) return;
+    if (!game.board.moveCount) { flashBtnError(ub); return; }   // 无棋可悔：错误反馈
     var pending = game.pendingUndo(toHuman);     // 先算出"要退哪几枚"
-    if (!pending.length) return;
+    if (!pending.length) { flashBtnError(ub); return; }
 
     aiGen += 1;                                   // 作废正在跑的 AI 结果
     thinking = false;
     selected = [];
+    if (ub) ub.classList.add('is-loading');   // 悔棋按钮 loading 反馈
     var removed = game.undoRound(toHuman);        // 规则层立即撤销
-    if (!removed) return;
+    if (!removed) { if (ub) ub.classList.remove('is-loading'); flashBtnError(ub); return; }
 
     paint();
     updateStatus();                               // 内含 renderMoves：棋谱面板要跟着撤
@@ -1089,6 +1107,7 @@
         anim = null;
         paint();
         refreshButtons();
+        if (ub) ub.classList.remove('is-loading');   // 解除悔棋按钮 loading
         maybeAiTurn();                             // 撤到 AI 轮则让它续走
       }
     }
@@ -1103,9 +1122,10 @@
    * （那正是它现在待的地方），退场后原地就空了。
    */
   function doUndoXiangqi(toHuman) {
-    if (!game.movesLog.length) return;
+    var ub = $('btnUndo');
+    if (!game.movesLog.length) { flashBtnError(ub); return; }
     var pending = game.pendingUndo(toHuman);
-    if (!pending.length) return;
+    if (!pending.length) { flashBtnError(ub); return; }
 
     var ghosts = [];
     for (var i = 0; i < pending.length; i++) {
@@ -1117,8 +1137,9 @@
     aiGen += 1;
     thinking = false;
     selected = [];
+    if (ub) ub.classList.add('is-loading');   // 悔棋按钮 loading 反馈
     var removed = game.undoRound(toHuman);
-    if (!removed) return;
+    if (!removed) { if (ub) ub.classList.remove('is-loading'); flashBtnError(ub); return; }
 
     paint();
     updateStatus();
@@ -1155,6 +1176,7 @@
         anim = null;
         paint();
         refreshButtons();
+        if (ub) ub.classList.remove('is-loading');   // 解除悔棋按钮 loading
         maybeAiTurn();
       }
     }
@@ -1238,6 +1260,55 @@
     sel.value = (keep === 'black' || keep === 'white') ? keep : 'black';
   }
 
+  /** 顶栏选项卡滑动指示条：按当前激活 tab 重定位金条（空值保护，假 DOM 无 offsetWidth 时跳过）。 */
+  function moveIndicator() {
+    var on = document.querySelector('.tabs .tab.is-on');
+    var ind = document.querySelector('.tab-indicator');
+    if (!on || !ind || !on.offsetWidth) return;
+    ind.style.width = on.offsetWidth + 'px';
+    ind.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+  }
+
+  /** 切棋种：先淡出旧棋盘，再开新局并重淡入，避免"瞬间换盘"的突兀感。 */
+  function transitionNewGame() {
+    var bw = boardwrap;
+    bw.classList.add('swap-out');
+    setTimeout(function () {
+      try {
+        newGame();
+      } finally {
+        // 即便 newGame 抛异常也要解除 swap-out，否则棋盘会永久透明（减动效用户尤甚）
+        bw.classList.remove('swap-out');
+        bw.classList.add('swap-in');
+      }
+      setTimeout(function () { bw.classList.remove('swap-in'); }, 320);
+    }, 180);
+  }
+
+  /** 开新局按钮：loading → 实际开局 → success 三拍反馈（finally 保证按钮永远可复位）。 */
+  function startNew() {
+    var b = $('btnNew');
+    if (b.disabled) return;
+    b.disabled = true;
+    b.classList.add('is-loading');
+    b.textContent = '开局中…';
+    setTimeout(function () {
+      var ok = false;
+      try {
+        newGame();
+        ok = true;
+      } finally {
+        b.classList.remove('is-loading');
+        b.textContent = '开始新对局';
+        b.disabled = false;
+      }
+      if (ok) {
+        b.classList.add('is-success');
+        setTimeout(function () { b.classList.remove('is-success'); }, 800);
+      }
+    }, 60);
+  }
+
   function switchPage(name) {
     ['play', 'records', 'help'].forEach(function (p) {
       $('page-' + p).classList.toggle('is-on', p === name);
@@ -1247,6 +1318,7 @@
     });
     if (name === 'records') renderRecords();
     if (name === 'play') resize();
+    moveIndicator();
   }
 
   function bind() {
@@ -1263,19 +1335,23 @@
     });
 
     $('mode').onchange = function () {
-      var human = $('mode').value === 'human_ai';
-      $('rowSide').style.display = human ? '' : 'none';
-      $('rowDiff').style.display = human ? '' : 'none';
+      // 双人模式隐藏"我执 / AI 难度"（行折叠，非 display 切换）
+      $('rowSide').classList.toggle('collapsed', $('mode').value !== 'human_ai');
+      $('rowDiff').classList.toggle('collapsed', $('mode').value !== 'human_ai');
     };
     // 棋种切换：重设"我执"的两个选项文案（象棋是红先、连珠类是黑先），
-    // 然后开新局（棋盘尺寸/渲染器都要换）
+    // 然后开新局（棋盘尺寸/渲染器都要换）——带淡入淡出过渡
     $('variant').onchange = function () {
       syncSideOptions();
-      newGame();
+      transitionNewGame();
     };
-    $('theme').onchange = function () { themeName = $('theme').value; paint(); };
+    $('theme').onchange = function () {
+      themeName = $('theme').value; paint();
+      canvas.classList.add('theme-pulse');   // 主题/翻转微呼吸
+      setTimeout(function () { canvas.classList.remove('theme-pulse'); }, 240);
+    };
 
-    $('btnNew').onclick = newGame;
+    $('btnNew').onclick = startNew;
     $('btnConfirm').onclick = confirmStones;
     $('btnPass').onclick = passRound;
     $('btnUndo').onclick = doUndo;
@@ -1285,6 +1361,8 @@
       xqFlipped = !xqFlipped;
       xqView.flipped = xqFlipped;
       paint();
+      canvas.classList.add('theme-pulse');   // 主题/翻转微呼吸
+      setTimeout(function () { canvas.classList.remove('theme-pulse'); }, 240);
     };
     $('btnResign').onclick = function () {
       if (!game || game.finished) return;
@@ -1340,6 +1418,7 @@
     }
     $('mode').onchange();
     newGame();
+    moveIndicator();
   }
 
   if (document.readyState === 'loading') {

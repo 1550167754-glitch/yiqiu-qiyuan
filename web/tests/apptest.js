@@ -333,6 +333,33 @@ async function pump(ms) {
   ok('象棋悔棋后界面恢复正常（不停留在 AI 思考中）',
     /点自己的棋子|本局已结束/.test(contentOf('hint')), contentOf('hint'));
 
+  // --- 回归：悔棋动画被"开新局"打断后，btnUndo 的 is-loading 不得永久残留（QA 高优 bug） ---
+  // 复现场景：悔棋动画进行中（is-loading 已加、anim 未结束）用户点了"开始新对局"，
+  // newGame→cancelAnim 必须解除 is-loading，否则按钮会永久灰死、pointer-events:none。
+  getEl('variant').value = 'connect6';
+  getEl('variant').onchange();          // transitionNewGame 开新局（带淡入淡出）
+  await pump(400);
+  clickAt(300, 300);                     // 落一子
+  await pump(150);                       // "选满自动落子"的 setTimeout(90)
+  await pump(2500);                      // AI 应对
+  ok('回归前置：已制造可悔棋局面', /1\./.test(contentOf('moves')),
+    '棋谱=' + JSON.stringify(contentOf('moves').slice(0, 30)));
+
+  var ubLeak = getEl('btnUndo');
+  ubLeak.onclick();                      // 触发悔棋：同步加 is-loading，启动倒退动画
+  ok('悔棋动画期间按钮进入 loading', ubLeak.classList.contains('is-loading'));
+  getEl('btnNew').onclick();             // 动画未结束即开新局（60ms 后 newGame→cancelAnim）
+  await pump(400);                       // 远小于悔棋动画总时长，确保是"打断"而非"自然结束"
+  ok('开新局打断悔棋后 is-loading 已解除（不残留灰死）',
+    !ubLeak.classList.contains('is-loading'),
+    'is-loading=' + ubLeak.classList.contains('is-loading'));
+  // 关键：is-loading 解除后按钮不再 pointer-events:none，造一步新棋即可恢复可用（证明非永久卡死）
+  clickAt(300, 300);
+  await pump(150);
+  await pump(2500);
+  ok('is-loading 解除后按钮可随局面恢复可用', ubLeak.disabled === false,
+    'disabled=' + ubLeak.disabled + ' 棋谱=' + JSON.stringify(contentOf('moves').slice(0, 20)));
+
   console.log('\n合计：' + passed + ' passed, ' + failed + ' failed');
   if (failed) { console.log('失败项：' + fails.join('、')); process.exit(1); }
   process.exit(0);
