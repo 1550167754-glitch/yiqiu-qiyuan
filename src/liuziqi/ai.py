@@ -23,8 +23,9 @@ from __future__ import annotations
 import random
 import time
 
-from .board import BLACK, EMPTY, OPPOSITE, WHITE, Board
+from .board import BLACK, EMPTY, OPPOSITE, WHITE, Board, WIN_COUNT
 from .kill_search import GomokuEval, KillSearch, KillTimeout
+from . import rapfi_engine
 
 # ----------------------------------------------------------------------
 # 棋型分值
@@ -1278,9 +1279,16 @@ class AI:
     五子棋档位差异：
       easy   —— 浅层 + 随机（人情味，不做算杀）；
       medium —— 算杀降档（根 VCF14/VCT10，叶 12/8/140），全局 6 层；
-      hard   —— **完整算杀设计**：根节点 VCF 连续冲四 18 层 + VCT 连续
+      hard   —— 完整算杀设计：根节点 VCF 连续冲四 18 层 + VCT 连续
                 威胁 12 层，叶节点算杀截断（VCF14/VCT10/240 节点），
                 8 层 Alpha-Beta 全局搜索，时限 9s，候选 28。
+
+    五子棋 hard 档优先走 **Rapfi 强引擎**（GomoCup 2024 冠军，αβ+NNUE，
+    arXiv:2503.13178；与象棋 Pikafish 同构，走子进程 piskvork 协议）：
+    棋力较内置引擎上两个台阶以上。引擎缺失/超时/进程异常/应答非法时
+    **逐次回退**到上述内置 AlphaBeta+VCF/VCT，对局不中断（见 get_move）。
+    六子棋（win_count==6）不适用 Rapfi，始终走内置引擎。
+    禁用方式：config/rapfi.ini [rapfi] enabled=false。
     """
 
     _PROFILES = {
@@ -1305,9 +1313,30 @@ class AI:
         prof = self._PROFILES.get(difficulty, self._PROFILES["medium"])
         kwargs = {k: v for k, v in prof.items() if k != "cls"}
         self.engine = prof["cls"](seed=seed, **kwargs)
+        self._rapfi = None            # RapfiEngine 单例（惰性获取）
+
+    def _rapfi_move(self, board: Board, color: int) -> tuple[int, int] | None:
+        """五子棋 hard 档：走 Rapfi 强引擎；任何失败返回 None 交回内置引擎。
+
+        只在工作线程调用（阻塞等引擎应答，时限 = config/rapfi.ini time_ms）。
+        """
+        if not rapfi_engine.available():
+            return None
+        try:
+            if self._rapfi is None:
+                self._rapfi = rapfi_engine.get_shared_engine()
+            return self._rapfi.best_move(board, color)
+        except Exception:
+            return None
 
     def get_move(self, board: Board, color: int,
                  stones_to_place: int) -> list[tuple[int, int]]:
+        # 五子棋困难档优先 Rapfi（win_count==5 才是五子棋；六子棋不适用）
+        if (self.difficulty == "hard"
+                and getattr(board, "win_count", WIN_COUNT) == 5):
+            mv = self._rapfi_move(board, color)
+            if mv is not None:
+                return [mv]
         stones = self.engine.best_move(board, color, stones_to_place)
         if not stones:
             c = board.size // 2
@@ -1328,11 +1357,18 @@ class AI:
         调用方拿到结果直接丢弃即可（正确性由 GUI 的 _ai_gen 把关）。
         注意 best_move 每次进入都会把该标志重置为 False，所以这里不需要
         "清标志"的配对调用。
+        Rapfi 侧没有协作式中止，直接杀进程（下一次 best_move 自动重启），
+        否则悔棋后玩家要白等满一个思考时限。
         """
         try:
             self.engine._stop = True
         except Exception:
             pass
+        if self._rapfi is not None:
+            try:
+                self._rapfi.stop()
+            except Exception:
+                pass
 
     @property
     def last_val(self) -> float:

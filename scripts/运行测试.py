@@ -43,7 +43,7 @@ def main() -> int:
         print("[错误] tests/ 下没有 test_*.py")
         return 2
 
-    passed = failed = 0
+    passed = failed = skipped = 0
     failures = []
     for fname in files:
         modname = os.path.splitext(fname)[0]
@@ -55,6 +55,7 @@ def main() -> int:
             print(f"FAIL {modname} 导入失败：{type(exc).__name__}: {exc}")
             traceback.print_exc()
             continue
+        skip_cls = getattr(mod, "Skipped", None)   # 测试文件自定义跳过信号
         for name in sorted(dir(mod)):
             if not name.startswith("test_"):
                 continue
@@ -64,6 +65,10 @@ def main() -> int:
             try:
                 fn()
             except Exception as exc:
+                if skip_cls is not None and isinstance(exc, skip_cls):
+                    skipped += 1
+                    print(f"SKIP {modname}.{name}: {exc}")
+                    continue
                 failed += 1
                 failures.append(f"{modname}.{name}")
                 print(f"FAIL {modname}.{name}: {type(exc).__name__}: {exc}")
@@ -72,7 +77,7 @@ def main() -> int:
                 passed += 1
                 print(f"PASS {modname}.{name}")
 
-    print(f"\n合计：{passed} passed, {failed} failed")
+    print(f"\n合计：{passed} passed, {failed} failed, {skipped} skipped")
     if failures:
         print("失败项：" + "、".join(failures))
     return 1 if failed else 0

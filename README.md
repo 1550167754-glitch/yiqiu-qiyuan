@@ -30,6 +30,7 @@
 │   └─ liuziqi/         业务/引擎包（15 个模块 + main.py）
 │       ├─ board.py     棋盘：落子/悔棋/连六判定/候选点
 │       ├─ ai.py        本地 AI：Alpha-Beta+PVS+置换表+迭代加深+威胁搜索
+│       ├─ rapfi_engine.py  Rapfi 五子棋引擎封装（piskvork 协议子进程，困难档）
 │       ├─ llm_ai.py    大模型引擎（DeepSeek/千问），失败回退本地 AI
 │       ├─ game.py      对局状态机（轮次/计时/悔棋/棋谱）
 │       ├─ gui.py       图形界面：启动页+对战页+两步落子+胜率曲线+GlowButton
@@ -49,13 +50,24 @@
 │   ├─ icon.ico         窗口/程序图标
 │   ├─ icon64.png
 │   └─ logo.png
-├─ engine/              第三方引擎（Pikafish NNUE，可执行文件 + 权重，不入库）
+├─ engine/              第三方引擎（Pikafish NNUE 象棋 / Rapfi 五子棋，可执行文件 + 权重，不入库）
 ├─ scripts/             构建与安装脚本（build_exe.bat / setup_dev.bat 等）
 ├─ config/              实际配置（含密钥，已被 .gitignore 排除）
-├─ config.example/      配置占位模板（database.ini / llm.ini，不含真实密钥）
+├─ config.example/      配置占位模板（database.ini / llm.ini / rapfi.ini，不含真实密钥）
 ├─ data/  logs/         运行期数据（回放/战绩）与日志，程序自动创建
 └─ dist/  build/        打包产物（build_exe.bat 生成；已入库忽略，用时重建）
 ```
+
+### 引擎说明（engine/，不入库，需本地放置）
+
+- **象棋**：`engine/Pikafish皮卡鱼*/` —— Pikafish NNUE（UCI 协议），人机对战 AI 后端。
+- **五子棋**：`engine/rapfi/` —— Rapfi（GomoCup 2024 冠军，αβ 搜索 + NNUE 评估，
+  arXiv:2503.13178；GPL-3.0），经 **piskvork 协议**驱动五子棋「困难」档。
+  放置官方发布包 `Rapfi-engine.7z`（github.com/dhbloo/rapfi/releases）解压后的全部
+  文件即可；程序按 CPU 指令集能力自动挑选 `pbrain-rapfi-windows-*.exe`
+  （avx512vnni→…→sse 逐个功能性验证）。思考时限与开关见 `config.example/rapfi.ini`。
+  引擎缺失/异常时自动回退内置 AlphaBeta+VCF/VCT，对局不中断。
+- **禁用 Rapfi**：`config/rapfi.ini` 写 `[rapfi] enabled=false`。
 
 ### 仓库说明
 
