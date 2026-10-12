@@ -23,42 +23,42 @@ set "FAILED=0"
 echo ============================================================
 echo [1/7] 重新打包引擎
 echo ============================================================
-node "web\build.js"
+node "..\..\web\build.js"
 if errorlevel 1 set "FAILED=1"
 
 echo.
 echo ============================================================
 echo [2/7] 引擎逻辑回归（board / game / ai）
 echo ============================================================
-node "web\tests\run.js"
+node "..\..\web\tests\run.js"
 if errorlevel 1 set "FAILED=1"
 
 echo.
 echo ============================================================
 echo [3/7] 胜负判定穷举对拍（59 万组合）
 echo ============================================================
-node "web\tests\wincheck.js"
+node "..\..\web\tests\wincheck.js"
 if errorlevel 1 set "FAILED=1"
 
 echo.
 echo ============================================================
 echo [4/7] 中国象棋：攻击检测对拍 + 规则
 echo ============================================================
-node "web\tests\xqcheck.js"
+node "..\..\web\tests\xqcheck.js"
 if errorlevel 1 set "FAILED=1"
 
 echo.
 echo ============================================================
 echo [5/7] 中国象棋：棋力抽检（杀棋/吃子/应将/搜索深度）
 echo ============================================================
-node "web\tests\xqstrength.js"
+node "..\..\web\tests\xqstrength.js"
 if errorlevel 1 set "FAILED=1"
 
 echo.
 echo ============================================================
 echo [6/7] 假 DOM 真跑 app.js（三种棋的交互链路）
 echo ============================================================
-node "web\tests\apptest.js"
+node "..\..\web\tests\apptest.js"
 if errorlevel 1 set "FAILED=1"
 
 echo.
@@ -67,7 +67,7 @@ echo [7/7] 跨语言对拍：桌面版(Python) 与 网页版(JS) 规则逐项比对
 echo ============================================================
 set "PYPATH=%USERPROFILE%\.workbuddy\venvs\liuziqi\Scripts\python.exe"
 if not exist "%PYPATH%" set "PYPATH=python"
-"%PYPATH%" "web\tests\parity.py"
+"%PYPATH%" "..\..\web\tests\parity.py"
 if errorlevel 1 set "FAILED=1"
 
 echo.

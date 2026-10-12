@@ -143,15 +143,15 @@ class Database:
         if "password" in low or "认证失败" in err or "authentication" in low:
             return (f"账号或密码不正确（{target}）。"
                     "请核对 config/database.ini 的 user / password；"
-                    "改名或忘记密码可运行项目根目录的 "
+                    "改名或忘记密码可运行 scripts/db/ 目录下的 "
                     "一键修复PostgreSQL.cmd（需管理员）。")
         if "does not exist" in low and "database" in low:
             return (f"数据库 {self.params.get('dbname')} 不存在。"
                     "请执行：CREATE DATABASE connect6;（或运行 "
-                    "一键修复PostgreSQL.cmd 自动创建）")
+                    "scripts/db/一键修复PostgreSQL.cmd 自动创建）")
         if "role" in low and "does not exist" in low:
             return (f"角色 {self.params.get('user')} 不存在。"
-                    "请核对 ini 中的 user，或运行 一键修复PostgreSQL.cmd。")
+                    "请核对 ini 中的 user，或运行 scripts/db/一键修复PostgreSQL.cmd。")
         if "could not connect" in low or "connection refused" in low:
             return ("连不上 PostgreSQL 服务（端口未监听）。"
                     "请确认服务 postgresql-x64-18 已启动。")

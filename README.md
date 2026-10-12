@@ -90,7 +90,7 @@
 
 不装数据库也能正常对弈，只是"自动存档 / 战绩查询"不可用。要让存档生效：
 
-1. 双击项目根目录的 **`一键修复PostgreSQL.cmd`**（会弹 UAC，需管理员权限）。
+1. 双击 **`scripts\db\一键修复PostgreSQL.cmd`**（会弹 UAC，需管理员权限）。
    它自动完成：设置数据库密码 → 建库 `connect6` → 建表 → 写回
    `config\database.ini` → 用程序自己的代码复验连接。
 2. 想手动确认状态：`python scripts\测试数据库连接.py`

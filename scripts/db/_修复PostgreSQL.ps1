@@ -11,7 +11,8 @@ $ErrorActionPreference = 'Stop'
 $OutputEncoding = [System.Text.Encoding]::UTF8
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
-$Root     = Split-Path -Parent $MyInvocation.MyCommand.Path
+# 脚本位于 scripts\db\，仓库根是上上级目录（文件→db→scripts→根）
+$Root     = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 $CfgPath  = Join-Path $Root 'config\database.ini'
 $CfgExample = Join-Path $Root 'config.example\database.ini'
 $TestPy   = Join-Path $Root 'scripts\测试数据库连接.py'

@@ -2730,6 +2730,46 @@ function xqEvaluate(board) {
   return score;
 }
 
+/**
+ * 便宜版评估（红方视角）：子力 + 位置表 + "将帅是否被将军"单项。
+ *
+ * 【为什么必须有它】性能实测：全量评估约 15 万次/秒，而搜索全速也就 ~11 万节点/秒
+ * —— 即每个搜索节点的成本几乎全是评估。静态搜索（quiescence）每个节点都要 stand-pat
+ * 一次，若用全量评估（机动性要对每个车/炮/马各跑一次 pieceMoves 造数组，将帅安全要
+ * 9 次 isAttacked 扫线），节点速度被锁死在 ~11 万/秒，300ms 快棋只能搜 3 层，
+ * 难度梯度完全拉不开（实测 easy 与 hard 在 300ms 下同层，对抗互有胜负）。
+ *
+ * 取舍：stand-pat 只需要"不产生系统性偏差的静态底价"，战术准确性由"继续搜吃子/
+ * 应将"保证 —— 真被将军时 quiesce 会走完整应将分支而非依赖评估。故省掉机动性/
+ * 车占线/九宫邻域压制这些慢项，只保留 子力+PST+被将军（各 1 次 isAttacked）。
+ * 全量评估仍保留给"关闭静态搜索"的路径使用。
+ */
+function xqEvaluateCheap(board) {
+  var grid = board.grid;
+  var score = 0;
+  var redKing = null, blackKing = null;
+
+  for (var y = 0; y < ROWS; y++) {
+    var row = grid[y];
+    for (var x = 0; x < COLS; x++) {
+      var p = row[x];
+      if (!p) continue;
+      var kind = p[1];
+      var v = (PIECE_VALUE[kind] || 0) + pstOf(kind, p[0], x, y);
+      score += (p[0] === RED) ? v : -v;
+      if (kind === KING) {
+        if (p[0] === RED) redKing = [x, y]; else blackKing = [x, y];
+      }
+    }
+  }
+
+  // 将帅安全（便宜版）：只看"是否正被将军"，不扫九宫邻域
+  if (redKing && board.isAttacked(redKing[0], redKing[1], BLACK)) score -= 60;
+  if (blackKing && board.isAttacked(blackKing[0], blackKing[1], RED)) score += 60;
+
+  return score;
+}
+
 // ------------------------------------------------------------------ 走法排序
 function moveKey(mv) { return ((mv[0] * 10 + mv[1]) * 100) + (mv[2] * 10 + mv[3]); }
 
@@ -2769,22 +2809,31 @@ function bookMatches(line, hist) {
 
 function XqAI(level, seed) {
   this.level = level || 'medium';
-  // 三档：深度上限 + 时限(ms) + 是否开启静态搜索
-  // hard 档加深（配合空着裁剪/LMR，实际搜索深度远超 6 层）且不超时（受 deadline 保护）
-  // 难度梯度（2026-10-11 重定标）：
-  //   easy   = 原 medium（depth6/1800），玩家要求"简单不能再智障"，故抬到旧中等水平；
-  //   medium = 介于旧中等与 hard 之间（depth8/3000）；
-  //   hard   = 在原 depth10/5000 基础上再上一个高度（depth16/8000，配合空着裁剪/LMR
-  //            实际搜到的层数远超 depth 上限，时限才是真瓶颈，故主要加时限）。
+  // 三档：深度上限 + 时限(ms) + 静态搜索吃子延伸深度(qdepth) + 将军延伸上限(extend)
+  //       + 根着法宽容度(margin，单位约=厘兵：在 bestScore-margin 以内的着法里随机挑)
+  // 难度梯度（2026-10-11 二次提强：用户反馈"简单模式仍过于简单"，三档整体上移并拉开）：
+  //   easy   = depth8/2000ms/qdepth4/margin50：入门玩家需认真下才能赢，但仍是三档最弱。
+  //            margin 是**任何时限下都生效**的梯度手段——同为 300ms 快棋时双方搜索
+  //            深度相同（时限封顶），光靠 depth/qdepth 拉不开差距（实测对抗互有胜负）；
+  //            easy 每手在"足够好"的着法里随机挑，模拟人类不完美，但不白送子
+  //            （送子会被静态搜索打出一整个子以上的分差，远超 50 门槛，必然被排除）；
+  //   medium = depth12/4000ms/qdepth6/margin20：介于两者之间，梯度清晰可感；
+  //   hard   = depth24/10000ms/qdepth10/margin0：永远走最优，配合空着裁剪/LMR 实际
+  //            搜索深度远超 depth 上限，时限才是真瓶颈，故主要加时限；更深的静态
+  //            搜索 + 将军延伸拉开战术差距。
   var prof = {
-    easy:   { depth: 6,  time: 1800, quiesce: true, rand: false },
-    medium: { depth: 8,  time: 3000, quiesce: true, rand: false },
-    hard:   { depth: 16, time: 8000, quiesce: true, rand: false }
-  }[this.level] || { depth: 6, time: 1800, quiesce: true, rand: false };
+    easy:   { depth: 8,  time: 2000,  qdepth: 4,  extend: 10, margin: 50 },
+    medium: { depth: 12, time: 4000,  qdepth: 6,  extend: 16, margin: 20 },
+    hard:   { depth: 24, time: 10000, qdepth: 10, extend: 24, margin: 0 }
+  }[this.level] || { depth: 8, time: 2000, qdepth: 4, extend: 10, margin: 50 };
   this.maxDepth = prof.depth;
   this.timeLimit = prof.time;
-  this.useQuiesce = prof.quiesce;
-  this.randomize = prof.rand;
+  this.useQuiesce = true;
+  this.qdepth = prof.qdepth;
+  this.extend = prof.extend;
+  this.rootMargin = prof.margin;
+  this.softDeadline = 0;          // >0 时主搜索提前让出时间给宽容选择复搜
+  this.randomize = false;
   this.seed = seed === undefined ? 20261009 : seed;
   this.nodes = 0;
   this.deadline = 0;
@@ -2809,7 +2858,10 @@ function makeRng(seed) {
 }
 
 XqAI.prototype.stop = function () { this.stopFlag = true; };
-XqAI.prototype._timeUp = function () { return Date.now() >= this.deadline; };
+/** 主搜索是否该停：宽容度 > 0 的档位让出尾部时间给"宽容选择"复搜，否则用总时限。 */
+XqAI.prototype._timeUp = function () {
+  return Date.now() >= (this.softDeadline || this.deadline);
+};
 
 /**
  * 生成伪合法着法（不校验走完是否自己被将）。
@@ -2906,7 +2958,7 @@ XqAI.prototype.quiesce = function (board, color, alpha, beta, qdepth) {
 
   // 被将军：搜全部应将着法（找杀/解将），否则即被将死
   if (checked) {
-    if (qdepth <= -8) return xqEvaluate(board) * (color === RED ? 1 : -1);
+    if (qdepth <= -8) return xqEvaluateCheap(board) * (color === RED ? 1 : -1);
     var ev = this.genMoves(board, color);
     var best = -INF;
     var any = 0;
@@ -2926,7 +2978,7 @@ XqAI.prototype.quiesce = function (board, color, alpha, beta, qdepth) {
     return best;
   }
 
-  var stand = xqEvaluate(board) * (color === RED ? 1 : -1);
+  var stand = xqEvaluateCheap(board) * (color === RED ? 1 : -1);
   if (stand >= beta) return beta;
   if (stand > alpha) alpha = stand;
 
@@ -2962,12 +3014,13 @@ XqAI.prototype.search = function (board, color, depth, alpha, beta, ply) {
   var checked = board.inCheck(color);
 
   // 将军延伸：被将军时把这一层再延伸一截，避免把杀棋推到地平线下
-  if (checked && depth < 16) depth += 1;
+  // （延伸上限按难度分档：hard 档允许一路延伸到底，残局杀形看得更远）
+  if (checked && depth < this.extend) depth += 1;
 
   if (depth <= 0) {
     return this.useQuiesce
-      ? this.quiesce(board, color, alpha, beta, 4)
-      : xqEvaluate(board) * (color === RED ? 1 : -1);
+      ? this.quiesce(board, color, alpha, beta, this.qdepth)
+      : xqEvaluateCheap(board) * (color === RED ? 1 : -1);
   }
 
   // 置换表（键 = zobrist，附加 zobrist2 做二次校验：两者都对上才采用，杜绝 32bit 碰撞）
@@ -3084,7 +3137,10 @@ XqAI.prototype.getMove = function (board) {
   this.killers = [];
   this.historyTbl = {};
   board.recomputeZobrist();
-  this.deadline = Date.now() + this.timeLimit;
+  var startTime = Date.now();
+  this.deadline = startTime + this.timeLimit;
+  // 宽容档位（easy/medium）主搜索只用到约 55% 时限，剩余留给"宽容选择"复搜
+  this.softDeadline = this.rootMargin > 0 ? startTime + Math.floor(this.timeLimit * 0.55) : 0;
   var color = board.turn;
 
   var roots = board.legalMoves(color);
@@ -3169,8 +3225,44 @@ XqAI.prototype.getMove = function (board) {
     }
     if (broken) break;                             // 超时：沿用上一层的结果
     if (bestScore >= MATE - 100) break;            // 已经算到将死，不用更深
-    if (this._timeUp()) break;
+    if (Date.now() >= this.deadline) break;        // 真时限到（主搜索提前让位的情况）
     prevScore = bestScore;
+  }
+
+  // ---------------------------------------------------------------- 宽容选择（难度梯度核心）
+  // easy/medium 不永远走最优：在"分值 >= bestScore - margin"的着法里随机挑一手，
+  // 模拟人类的不完美。安全窗口复搜保证**绝不选到坏棋**：每手用
+  // [bestScore - margin, INF] 窗口搜一遍，真分低于门槛的着法必然 fail-low 被排除
+  // （窗口下界即门槛，返回值达标的着法真分必然 >= 门槛）。送子在静态搜索里会
+  // 损失一整个子以上（>= 100cp，车 900cp），远超 50 门槛，天然被排除——easy 仍不白送子。
+  // hard（margin=0）跳过本段。超时/中断则退回最优着法，保证稳定输出。
+  if (this.rootMargin > 0 && !this.stopFlag && bestMove && this.lastDepth >= 2) {
+    var margin = this.rootMargin;
+    var alphaM = bestScore - margin;
+    var passDepth = Math.min(this.lastDepth - 1, 6);
+    if (passDepth >= 2 && alphaM > -INF) {
+      this.softDeadline = this.deadline;           // 复搜可用全部剩余时限
+      var cands = [];
+      var orderedM = this._moveToFront(ordered, bestMove);
+      for (var m4 = 0; m4 < orderedM.length; m4++) {
+        var mv5 = orderedM[m4];
+        if (Date.now() >= this.deadline - 30) break;   // 超时：保留已验证的候选
+        if (!board.grid[mv5[1]][mv5[0]]) continue; // 防御：源格无子则跳过
+        board.apply([mv5[0], mv5[1]], [mv5[2], mv5[3]]);
+        if (board.inCheck(color)) { board.undo(); continue; }
+        var val5;
+        try {
+          val5 = -this.search(board, board.turn, passDepth - 1, -INF, -alphaM, 1);
+        } finally {
+          board.undo();
+        }
+        if (this.stopFlag) break;    // 搜索被打断：这一手的 val5 不可信，不计入
+        if (val5 >= alphaM) cands.push(mv5);
+      }
+      if (cands.length) {
+        bestMove = cands[Math.floor(this._rng() * cands.length)];
+      }
+    }
   }
   return bestMove;
 };

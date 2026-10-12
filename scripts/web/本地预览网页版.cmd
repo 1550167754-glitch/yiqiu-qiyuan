@@ -21,7 +21,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist "web\index.html" (
+if not exist "..\..\web\index.html" (
   echo [错误] 找不到 web\index.html，请确认在项目根目录运行本脚本。
   pause
   exit /b 1
@@ -30,6 +30,6 @@ if not exist "web\index.html" (
 echo 正在启动本地预览（浏览器会自动打开）...
 echo 关闭这个黑窗口即可停止服务。
 echo.
-node "web\serve.js" %1
+node "..\..\web\serve.js" %1
 pause
 exit /b 0

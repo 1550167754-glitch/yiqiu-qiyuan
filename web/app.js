@@ -117,11 +117,13 @@
       try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) { /* 不支持即忽略 */ }
     }
     return {
-      move: function () { v(8); },                                   // 轻点：落子
-      capture: function () { v([16, 10, 22]); },                     // 吃子：两短一长
-      check: function () { v([30, 18, 30, 18, 40]); },              // 将军：强脉冲
-      win: function () { v([40, 30, 40, 30, 70]); },                 // 胜：庆祝
-      lose: function () { v([70, 40, 120]); }                        // 负：沉重
+      select: function () { v(8); },                                  // 选点/选子：极轻确认
+      move: function () { v(12); },                                   // 落子：短促"嗒"
+      capture: function () { v([12, 45, 18]); },                      // 吃子：短-顿-短重
+      check: function () { v([25, 60, 25]); },                        // 将军：双拍警示
+      win: function () { v([35, 45, 35, 45, 90]); },                  // 胜：庆祝三连升
+      lose: function () { v([60, 60, 160]); },                        // 负：沉底长震
+      undo: function () { v(18); }                                    // 悔棋：轻回抽
     };
   })();
 
@@ -270,7 +272,7 @@
 
   // ---------------------------------------------------------------- 提示条
   function setBanner(html) {
-    if (!html) { banner.classList.add('is-hidden'); banner.innerHTML = ''; return; }
+    if (!html) { banner.classList.add('is-hidden'); banner.innerHTML = ''; banner.classList.remove('is-win', 'is-lose'); return; }
     banner.innerHTML = html;
     banner.classList.remove('is-hidden');
   }
@@ -339,7 +341,7 @@
     var mine = ($('side').value === mySide);
     var human = (mode === 'human_human') || mine;
     var name = human
-      ? (mode === 'human_human' ? (side === BLACK ? '黑方（玩家1）' : '白方（玩家2）') : '我')
+      ? (mode === 'human_human' ? (side === BLACK ? '玩家1 · 黑方' : '玩家2 · 白方') : '我')
       : 'AI（' + diffLabel(difficulty) + '）';
     if (human) return new G.Player(name, 'human');
     var seed = Date.now() % 100000;
@@ -354,7 +356,7 @@
     var mine = ($('side').value === mySide);
     var human = (mode === 'human_human') || mine;
     var name = human
-      ? (mode === 'human_human' ? (side === XQ_RED ? '红方（玩家1）' : '黑方（玩家2）') : '我')
+      ? (mode === 'human_human' ? (side === XQ_RED ? '玩家1 · 红方' : '玩家2 · 黑方') : '我')
       : 'AI（' + diffLabel(difficulty) + '）';
     if (human) return { name: name, kind: 'human', engine: null };
     var seed2 = Date.now() % 100000;
@@ -371,30 +373,33 @@
       : '轮到 ' + cur.name;
     $('lblTurn').textContent = game.finished
       ? game.resultText()
-      : curName + (cur.kind === 'human' ? '' : '（思考中）');
+      : curName + (cur.kind === 'human' ? '' : '（想棋中）');
     // 人机模式下轮到玩家时，状态条轻微脉冲提示"该你走"
     $('lblTurn').classList.toggle('pulse',
       !game.finished && mode === 'human_ai' && cur.kind === 'human');
+    // E9b：将军着色（常驻，无循环动画）；终局/换局自动移除
+    $('lblTurn').classList.toggle('is-check',
+      !game.finished && isXiangqi() && !!game.board.checkFlag);
 
     if (isXiangqi()) {
       var bd = game.board;
       $('lblStep').textContent = game.finished
         ? ('共 ' + game.movesLog.length + ' 步')
-        : ('轮到' + (bd.turn === XQ_RED ? '红方' : '黑方') +
-           (bd.checkFlag ? '（被将军！）' : ''));
+        : ((bd.turn === XQ_RED ? '红方' : '黑方') + '行棋' +
+           (bd.checkFlag ? '，将军！' : ''));
       var lm = bd.lastMove;
       $('lblMove').textContent = lm
         ? ('上一步：' + xqName(lm[0], lm[1]) + ' → ' + xqName(lm[2], lm[3]))
-        : '尚未行棋';
+        : '还没走子';
     } else {
       var left = game.maxStones - game.stonesThisRound;
       $('lblStep').textContent = game.finished
         ? ('共 ' + game.board.moveCount + ' 手')
-        : ('本轮已下 ' + game.stonesThisRound + '/' + game.maxStones + ' 子，还可下 ' + left + ' 子');
+        : ('本手已下 ' + game.stonesThisRound + '/' + game.maxStones + '，还能下 ' + left + ' 枚');
       var last = game.board.history.length ? game.board.history[game.board.history.length - 1] : null;
       $('lblMove').textContent = last
         ? ('最后一手：' + coordName(last[0], last[1]) + '（' + (last[2] === BLACK ? '黑' : '白') + '）')
-        : '尚未落子';
+        : '还没落子';
     }
     renderMoves();
   }
@@ -452,10 +457,10 @@
       var canUndoXq = !!game && game.movesLog.length > 0 && !anim && !thinking && human;
       $('btnUndo').disabled = !canUndoXq;
       $('hint').textContent = (game && game.finished)
-        ? '本局已结束，点「开始新对局」继续。'
+        ? '这局下完了，点「开新局」再来一盘。'
         : (human
-          ? '点自己的棋子选中（绿环=可走，红圈=可吃），再点目标即可走子；Esc 取消选中。'
-          : 'AI 正在思考，请稍候…');
+          ? '点己方棋子选中（绿圈能走、红圈能吃），再点目标位置落子；按 Esc 取消。'
+          : '对手想棋中…');
       return;
     }
 
@@ -469,10 +474,10 @@
     $('btnUndo').disabled = !game || game.board.moveCount === 0 || !!anim ||
       thinking || !human;
     $('hint').textContent = game && game.finished
-      ? '本局已结束，点「开始新对局」继续。'
+      ? '这局下完了，点「开新局」再来一盘。'
       : (human
-        ? '点击棋盘选点（最多 ' + game.maxStones + ' 个），选满自动落子；也可选 1 子后点「结束本回合」。'
-        : 'AI 正在思考，请稍候…');
+        ? '点棋盘选位（最多 ' + game.maxStones + ' 枚），选满自动落定；只想下一枚就点「结束回合」。'
+        : '对手想棋中…');
   }
 
   // ---------------------------------------------------------------- 落子交互
@@ -493,6 +498,7 @@
     if (r.select) {
       selected = [{ x: r.select[0], y: r.select[1] }];
       Sfx.play('select');
+      Haptic.select();               // 选子：极轻确认
     } else if (r.ok) {
       selected = [];
     } else if (r.msg && r.msg !== '已取消选择') {
@@ -647,6 +653,7 @@
     }
     if (game.stonesThisRound + selected.length >= game.maxStones) return;
     selected.push({ x: g.x, y: g.y });
+    Haptic.select();                 // 选点：极轻确认
     paint();
     refreshButtons();
     // 选满自动落子（落子体验更顺）
@@ -694,26 +701,18 @@
 
   // ---------------------------------------------------------------- AI
   // 「思考中」从全屏遮罩改为棋盘右上角小型徽标：
-  // 复用 overlay 元素与 id（apptest 假 DOM 只认现有 id），角落化完全靠内联样式
-  // 覆盖 .overlay 的居中/半透明底（style.css / index.html 不动，见协作分工）。
-  // display 不动内联——.is-hidden{display:none} 的隐藏开关必须继续生效。
+  // 复用 overlay 元素与 id（apptest 假 DOM 只认现有 id），角落化样式收编为
+  // style.css 的 .overlay.badge 类（规格 E12），这里只切 class。
+  // display 不动——.is-hidden{display:none} 的隐藏开关必须继续生效。
   function showOverlay(text) {
-    var s = overlay.style;
-    s.top = '10px'; s.right = '10px'; s.bottom = 'auto'; s.left = 'auto';
-    s.width = 'auto'; s.height = 'auto';
-    s.background = 'rgba(24,28,36,0.86)';
-    s.color = '#F2E8D5';
-    s.borderRadius = '999px';
-    s.padding = '5px 14px';
-    s.fontSize = '13px';
-    s.boxShadow = '0 2px 10px rgba(0,0,0,0.35)';
-    s.pointerEvents = 'none';
-    overlayText.textContent = text || 'AI 思考中…';
+    overlay.classList.add('badge');
+    overlayText.textContent = text || '对手想棋中…';
     overlay.classList.remove('is-hidden');
     if (boardwrap) boardwrap.classList.add('locked');   // 棋盘锁定：AI 思考期
   }
   function hideOverlay() {
     if (boardwrap) boardwrap.classList.remove('locked');
+    overlay.classList.remove('badge');
     overlay.classList.add('is-hidden');
   }
 
@@ -859,7 +858,7 @@
     if (thinking) return;
     thinking = true;
     refreshButtons();
-    showOverlay('AI 思考中（' + diffLabel(difficulty) + '）…');
+    showOverlay('对手想棋中（' + diffLabel(difficulty) + '）…');
     var gen = aiGen;
     var req = buildWorkerRequest();
 
@@ -939,7 +938,7 @@
     if (isXiangqi() && (!aiStones || !aiStones.length)) {
       // 象棋 AI 无着可走（理论不该发生）：判终局，绝不卡死
       game.finished = true;
-      game.reason = game.reason || 'AI 无着可走';
+      game.reason = game.reason || '对手无棋可走';
     }
     afterAiMoved(aiStones, aiPlaced, gen);
   }
@@ -951,7 +950,7 @@
   function applyFallbackXiangqiMove() {
     if (!game || game.finished) return null;
     var arr = game.board.legalMoves(game.board.turn);
-    if (!arr || !arr.length) { game.finished = true; game.reason = 'AI 无着可走'; return null; }
+    if (!arr || !arr.length) { game.finished = true; game.reason = '对手无棋可走'; return null; }
     var fb = arr[0];
     game.board.apply([fb[0], fb[1]], [fb[2], fb[3]], true);
     game.movesLog.push(fb);
@@ -1021,7 +1020,7 @@
     if (isXiangqi() && (!aiStones || !aiStones.length)) {
       // 兜底也没能走子（理论上只剩"确实无着"）：判终局，绝不卡死
       game.finished = true;
-      game.reason = game.reason || 'AI 无着可走';
+      game.reason = game.reason || '对手无棋可走';
     }
     afterAiMoved(aiStones, aiPlaced, gen);
   }
@@ -1080,11 +1079,14 @@
     var sub = isXiangqi()
       ? ('共 ' + game.movesLog.length + ' 步 · ' + game.reason)
       : ('共 ' + game.board.moveCount + ' 手 · ' + game.reason);
+    // E10d：按胜负给 banner 追加 is-win / is-lose（胜局有一道金光扫过，负/和仅占位）
+    banner.classList.remove('is-win', 'is-lose');
+    banner.classList.add(game.winner != null ? 'is-win' : 'is-lose');
     setBanner(
       '<div class="big">' + game.resultText() + '</div>' +
       '<div class="sub">' + sub + '</div>' +
       '<div class="row">' +
-      '<button class="btn primary" id="bnAgain" style="width:auto">再来一局</button>' +
+      '<button class="btn primary" id="bnAgain" style="width:auto">再来一盘</button>' +
       '<button class="btn" id="bnReplay" style="width:auto">复盘录像</button>' +
       '</div>'
     );
@@ -1124,13 +1126,13 @@
           '</div>' +
           '<div class="replay-row">' +
             '<input type="range" id="replaySeek" class="replay-seek" min="0" max="0" value="0" step="1">' +
-          '</div>' +
-          '<div class="replay-row replay-speed" id="replaySpeed">' +
-            '<span class="replay-speed-label">速度</span>' +
-            '<button class="btn small" data-ms="1400">慢</button>' +
-            '<button class="btn small is-on" data-ms="750">中</button>' +
-            '<button class="btn small" data-ms="350">快</button>' +
-            '<button class="btn small" data-ms="140">极快</button>' +
+            '<div class="replay-speed" id="replaySpeed">' +
+              '<span class="replay-speed-label">速度</span>' +
+              '<button class="btn small" data-ms="1400">慢</button>' +
+              '<button class="btn small is-on" data-ms="750">中</button>' +
+              '<button class="btn small" data-ms="350">快</button>' +
+              '<button class="btn small" data-ms="140">极快</button>' +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1352,6 +1354,7 @@
     if (ub) ub.classList.add('is-loading');   // 悔棋按钮 loading 反馈
     var removed = game.undoRound(toHuman);        // 规则层立即撤销
     if (!removed) { if (ub) ub.classList.remove('is-loading'); flashBtnError(ub); return; }
+    Haptic.undo();                                // 悔棋轻回抽（与 is-loading 同步）
 
     paint();
     updateStatus();                               // 内含 renderMoves：棋谱面板要跟着撤
@@ -1420,6 +1423,7 @@
     if (ub) ub.classList.add('is-loading');   // 悔棋按钮 loading 反馈
     var removed = game.undoRound(toHuman);
     if (!removed) { if (ub) ub.classList.remove('is-loading'); flashBtnError(ub); return; }
+    Haptic.undo();                                // 悔棋轻回抽（与 is-loading 同步）
 
     paint();
     updateStatus();
@@ -1483,7 +1487,7 @@
     var tbody = document.querySelector('#statTable tbody');
     tbody.innerHTML = '';
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty">暂无战绩记录，先下几局吧。</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">还没有战绩，下一局就开始攒。</td></tr>';
     } else {
       list.forEach(function (p) {
         var tr = document.createElement('tr');
@@ -1497,7 +1501,7 @@
     var box = $('gameList');
     box.innerHTML = '';
     if (!games.length) {
-      box.innerHTML = '<div class="empty">暂无对局记录。</div>';
+      box.innerHTML = '<div class="empty">还没下过棋，去下一局吧。</div>';
       return;
     }
     games.forEach(function (g) {
@@ -1579,7 +1583,7 @@
         ok = true;
       } finally {
         b.classList.remove('is-loading');
-        b.textContent = '开始新对局';
+        b.textContent = '开新局';
         b.disabled = false;
       }
       if (ok) {
@@ -1622,6 +1626,14 @@
       selPiece.appendChild(o);
     });
 
+    // 外观折叠组（卡B）：点组标题展开/收起
+    $('optsHead').onclick = function () {
+      var g = $('optsGroup');
+      var open = !g.classList.contains('is-open');
+      g.classList.toggle('is-open', open);
+      $('optsHead').setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+
     $('mode').onchange = function () {
       // 双人模式隐藏"我执 / AI 难度"（行折叠，非 display 切换）
       $('rowSide').classList.toggle('collapsed', $('mode').value !== 'human_ai');
@@ -1663,7 +1675,7 @@
       paint(); updateStatus(); refreshButtons(); finishGame();
     };
     $('btnClear').onclick = function () {
-      if (confirm('确定清空全部战绩记录吗？此操作不可撤销。')) {
+      if (confirm('清空后所有战绩都找不回来，确定全删吗？')) {
         Store.clearAll();
         renderRecords();
       }
@@ -1677,6 +1689,13 @@
     });
 
     document.addEventListener('keydown', function (e) {
+      // 复盘弹窗键盘（规格 §5.5）：←/→ 单步、空格 播放/暂停；
+      // 焦点在进度条 range 上时方向键交给原生行为（不劫持）
+      if (replay && !$('replayModal').classList.contains('is-hidden')) {
+        if (e.key === 'ArrowLeft' && e.target !== $('replaySeek')) { replayStop(); replayStep(-1); return; }
+        if (e.key === 'ArrowRight' && e.target !== $('replaySeek')) { replayStop(); replayStep(1); return; }
+        if (e.key === ' ') { e.preventDefault(); replayToggle(); return; }
+      }
       if (e.key === 'Enter') { confirmStones(); }
       else if (e.key === 'Escape') {
         selected = [];

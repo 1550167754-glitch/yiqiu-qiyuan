@@ -5,7 +5,7 @@
 ## 一、跑起来
 
 ```bat
-本地预览网页版.cmd          :: 启本地服务器 + 自动开浏览器（只用系统里的 node）
+scripts\web\本地预览网页版.cmd   :: 启本地服务器 + 自动开浏览器（只用系统里的 node，仓库根目录运行）
 node web\serve.js 5180 web\dist\site   :: 预览"发布产物"目录（上线前自检用）
 ```
 
@@ -66,7 +66,7 @@ web/
 ## 四、测试
 
 ```bat
-跑网页版测试.cmd                          :: 一把跑完下面 7 项
+scripts\web\跑网页版测试.cmd              :: 一把跑完下面 7 项（仓库根目录运行）
 node web\build.js                        :: 重新打包引擎（改完 engine/ 必跑）
 node web\tests\run.js                    :: 连珠类引擎回归（49 项）
 node web\tests\wincheck.js               :: 胜负判定穷举对拍（59 万组合）

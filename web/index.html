@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1F2430">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<title>弈趣棋苑 · 六子棋 / 五子棋 / 中国象棋</title>
+<title>弈趣棋苑 — 六子棋 · 五子棋 · 中国象棋</title>
+<meta name="description" content="弈趣棋苑：打开就能下的六子棋、五子棋、中国象棋，可人机对弈或同屏双人，无需注册。">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -39,30 +40,49 @@
         <div id="fxLayer" class="fx-layer"></div>
         <div id="overlay" class="overlay is-hidden">
           <div class="spinner"></div>
-          <span id="overlayText">AI 思考中…</span>
+          <span id="overlayText">对手想棋中…</span>
           <div class="ai-progress" id="aiProgress"><i></i></div>
         </div>
         <div id="banner" class="banner is-hidden"></div>
       </div>
 
-      <!-- 右：侧栏 -->
+      <!-- 右：侧栏（自上而下：卡A 棋局 → 卡B 设置 → 卡C 棋谱，见 ui-redesign-spec §2.3） -->
       <aside class="sidebar">
+        <!-- 卡A「棋局」＝ 状态 + 操作合并（高频操作最靠近手） -->
         <div class="card">
-          <h2>对局设置</h2>
+          <h2>棋局</h2>
+          <div class="status">
+            <div class="line"><span id="lblTurn">—</span></div>
+            <div class="line dim" id="lblStep">—</div>
+            <div class="line dim" id="lblMove">—</div>
+          </div>
+          <div class="actions">
+            <button id="btnConfirm" class="btn ok" disabled>落子</button>
+            <button id="btnPass" class="btn" disabled>结束回合</button>
+            <button id="btnUndo" class="btn">悔棋</button>
+            <button id="btnFlip" class="btn wide" style="display:none">翻转棋盘</button>
+            <button id="btnResign" class="btn small danger">认输</button>
+          </div>
+          <p class="hint" id="hint">点棋盘选位，选满自动落定；只想下一枚，就点「结束回合」。</p>
+        </div>
+
+        <!-- 卡B「设置」＝ 对局条件在明面，外观偏好默认折叠 -->
+        <div class="card">
+          <h2>设置</h2>
           <label class="row"><span>棋种</span>
             <select id="variant">
-              <option value="connect6">六子棋（19×19 连六）</option>
-              <option value="gomoku">五子棋（15×15 连五）</option>
-              <option value="xiangqi">中国象棋（9×10）</option>
+              <option value="connect6">六子棋（19 路 · 连六）</option>
+              <option value="gomoku">五子棋（15 路 · 连五）</option>
+              <option value="xiangqi">中国象棋（9×10 盘）</option>
             </select>
           </label>
-          <label class="row"><span>模式</span>
+          <label class="row"><span>对弈方式</span>
             <select id="mode">
-              <option value="human_ai">人机对战</option>
-              <option value="human_human">本地双人</option>
+              <option value="human_ai">人机对弈</option>
+              <option value="human_human">同屏双人</option>
             </select>
           </label>
-          <label class="row" id="rowSide"><span>我执</span>
+          <label class="row" id="rowSide"><span>执子</span>
             <select id="side">
               <option value="black">黑（先手）</option>
               <option value="white">白（后手）</option>
@@ -75,37 +95,27 @@
               <option value="hard">困难</option>
             </select>
           </label>
-          <label class="row"><span>棋盘主题</span>
-            <select id="theme"></select>
-          </label>
-          <label class="row"><span>棋子材质</span>
-            <select id="pieceStyle"></select>
-          </label>
-          <label class="row"><span>音效</span>
-            <input type="checkbox" id="chkSound" checked>
-          </label>
-          <button id="btnNew" class="btn primary">开始新对局</button>
+          <!-- 外观折叠组：改一次管很久的偏好，默认收起 -->
+          <div class="opts-group" id="optsGroup">
+            <button type="button" class="opts-head" id="optsHead" aria-expanded="false" aria-controls="optsBody">外观 <span class="caret" aria-hidden="true"></span></button>
+            <div class="opts-body" id="optsBody">
+              <label class="row"><span>棋盘主题</span>
+                <select id="theme"></select>
+              </label>
+              <label class="row"><span>棋子材质</span>
+                <select id="pieceStyle"></select>
+              </label>
+              <label class="row"><span>音效</span>
+                <input type="checkbox" id="chkSound" checked>
+              </label>
+            </div>
+          </div>
+          <button id="btnNew" class="btn primary">开新局</button>
         </div>
 
-        <div class="card">
-          <h2>对局状态</h2>
-          <div class="status">
-            <div class="line"><span id="lblTurn">—</span></div>
-            <div class="line dim" id="lblStep">—</div>
-            <div class="line dim" id="lblMove">—</div>
-          </div>
-          <div class="actions">
-            <button id="btnConfirm" class="btn ok" disabled>确认落子</button>
-            <button id="btnPass" class="btn" disabled>结束本回合</button>
-            <button id="btnUndo" class="btn">悔棋</button>
-            <button id="btnResign" class="btn danger">认输</button>
-            <button id="btnFlip" class="btn wide" style="display:none">翻转棋盘</button>
-          </div>
-          <p class="hint" id="hint">在棋盘上点选落点，选满后自动落下；本回合只想走一枚时，可点「结束本回合」。</p>
-        </div>
-
+        <!-- 卡C「棋谱」＝ 记录类垫底 -->
         <div class="card" id="cardRecord" hidden>
-          <h2>本局棋谱</h2>
+          <h2>棋谱</h2>
           <div class="moves" id="moves"></div>
         </div>
       </aside>
@@ -116,17 +126,17 @@
   <section id="page-records" class="page">
     <div class="narrow">
       <div class="card">
-        <h2>棋手战绩</h2>
+        <h2>战绩</h2>
         <table class="table" id="statTable">
           <thead><tr><th>棋手</th><th>类型</th><th>胜</th><th>负</th><th>平</th></tr></thead>
           <tbody></tbody>
         </table>
-        <p class="hint">数据保存在本机浏览器（localStorage），不上传服务器。</p>
+        <p class="hint">战绩只存在你这台设备的浏览器里，不会上传。</p>
       </div>
       <div class="card">
         <h2>最近对局</h2>
         <div id="gameList" class="gamelist"></div>
-        <button id="btnClear" class="btn danger small">清空全部战绩</button>
+        <button id="btnClear" class="btn danger small">清空战绩</button>
       </div>
     </div>
   </section>
@@ -135,29 +145,29 @@
   <section id="page-help" class="page">
     <div class="narrow">
       <div class="card">
-        <h2>六子棋 Connect6</h2>
+        <h2>六子棋</h2>
         <ul class="rules">
-          <li>19×19 棋盘，黑先；<b>黑方第一轮只下 1 子</b>，之后每轮双方各下 1~2 子。</li>
-          <li>横、竖、斜任一方向连成 <b>6 子</b>即胜。</li>
-          <li>常见棋型：4 连两端开放（活四）→ 补一头成活五，两端都能成六，对手堵不完即必胜。</li>
+          <li>19 路棋盘，黑棋先行。<b>黑棋第一手只下 1 枚</b>，之后双方每轮各下 1～2 枚。</li>
+          <li>横、竖、斜任意方向连成 <b>6 枚</b>即胜。</li>
+          <li>小提示：两头空的四连（活四）几乎必胜——补一头就是活五，对手堵不住两头。</li>
         </ul>
-        <h2>五子棋 Gomoku</h2>
+        <h2>五子棋</h2>
         <ul class="rules">
-          <li>15×15 棋盘，黑先；每轮双方各下 <b>1 子</b>；连成 <b>5 子</b>即胜。</li>
+          <li>15 路棋盘，轮流各下一枚，先连成 <b>5 枚</b>的一方胜。</li>
         </ul>
-        <h2>中国象棋 Xiangqi</h2>
+        <h2>中国象棋</h2>
         <ul class="rules">
-          <li>红先。完整规则：马蹩腿、象塞眼、炮隔子吃、兵过河可平移、将帅不可照面。</li>
-          <li>将死或困毙（无合法着法）均判负。</li>
-          <li>点子走子：先点己方棋子（绿环=可走、红圈=可吃），再点目标格即可；<b>Esc</b> 取消选中。</li>
-          <li>执黑时棋盘自动翻转（己方在下方），也可随时点「翻转棋盘」。</li>
+          <li>红先黑后。马蹩腿、象塞眼、炮打隔子、过河兵能横走、将帅不能照面——和街边象棋一个下法。</li>
+          <li>被将死，或轮到自己却无棋可走，都算输。</li>
+          <li>点子走棋：先点自己的棋子（绿圈＝能走的点，红圈＝能吃的子），再点要去的位置；<b>Esc</b> 取消。</li>
+          <li>执黑时棋盘会自动翻过来，你的棋子始终在下方；也可以随时点「翻转棋盘」调头。</li>
         </ul>
-        <h2>操作说明</h2>
+        <h2>怎么玩</h2>
         <ul class="rules">
-          <li><b>连珠类两步落子</b>：先点棋盘选点（虚线预览），再点「确认落子」。</li>
-          <li><b>悔棋</b>：人机模式一次撤掉「AI 一轮 + 我方一轮」，回到我方行棋；带倒退动画。</li>
-          <li>快捷键：<b>Enter</b> 确认落子（连珠类）、<b>Esc</b> 取消选择。</li>
-          <li>音效在设置里可开关，选择会自动记忆。</li>
+          <li><b>六子棋和五子棋落子分两步</b>：先点棋盘选位（有虚线预览），再点「落子」确认。</li>
+          <li><b>悔棋</b>：人机模式下一次撤回对手和你各一手，回到你行棋，棋子带倒退动画。</li>
+          <li>快捷键：<b>Enter</b> 落子（六子/五子），<b>Esc</b> 取消选择。</li>
+          <li>音效在「设置 → 外观」里开关，选好会自动记住。</li>
         </ul>
       </div>
     </div>
@@ -166,7 +176,7 @@
 
 <footer class="footer">
   <span>弈趣棋苑 · 网页版</span>
-  <span class="dim">纯前端运行，无需服务器；棋谱与战绩保存在本机</span>
+  <span class="dim">打开即玩，数据都存在你这台设备上</span>
 </footer>
 
 <!-- 引擎打包产物：浏览器里通过全局 E 取用（E.board / E.game / E.ai / E.xiaqi …） -->

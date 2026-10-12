@@ -223,8 +223,8 @@ async function pump(ms) {
   };
   clickAt(300, 300);
   ok('点中心可选中（确认按钮可用）', getEl('btnConfirm').disabled === false);
-  ok('提示文案提示"选满自动落子/结束回合"',
-    /选满自动落子|结束本回合/.test(contentOf('hint')), contentOf('hint'));
+  ok('提示文案提示"选满自动落定/结束回合"',
+    /选满自动落定|结束回合/.test(contentOf('hint')), contentOf('hint'));
 
   clickAt(300, 300);
   ok('再点同一点取消选择', getEl('btnConfirm').disabled === true);
@@ -256,8 +256,8 @@ async function pump(ms) {
   await pump(900);             // 动画（每枚约 190ms）
   await pump(2500);            // 动画后 AI 的应对
 
-  ok('动画结束后界面不停留在"AI 思考中"',
-    /点击棋盘选点|本局已结束/.test(contentOf('hint')), contentOf('hint'));
+  ok('动画结束后界面不停留在"对手想棋中"',
+    /点棋盘选位|这局下完了/.test(contentOf('hint')), contentOf('hint'));
   ok('动画结束后不遗留遮罩层',
     getEl('overlay').classList.contains('is-hidden') === true);
 
@@ -290,7 +290,7 @@ async function pump(ms) {
   ok('切到中国象棋不报错', !xqErr, xqErr ? xqErr.message : '');
   await pump(200);
   ok('象棋局面提示正确',
-    /点自己的棋子选中/.test(contentOf('hint')) || /AI 正在思考/.test(contentOf('hint')),
+    /点己方棋子选中/.test(contentOf('hint')) || /对手想棋中/.test(contentOf('hint')),
     contentOf('hint'));
   // 象棋棋盘是 9 列 × 10 行，比宽高（竖长），与连珠类的正方棋盘不同
   ok('象棋画布按 9×10 竖长比例布局',
@@ -308,7 +308,7 @@ async function pump(ms) {
     clickAt(x0Est + cx * estCell, y0Est + cy * estCell);
   }
   clickCell(7, 7);                       // 选红炮（第 7 列、第 7 行）
-  ok('选中红炮后按钮与提示同步', /点自己的棋子/.test(contentOf('hint')),
+  ok('选中红炮后按钮与提示同步', /点己方棋子/.test(contentOf('hint')),
     contentOf('hint'));
   clickCell(4, 7);                       // 炮二平五
   await pump(200);
@@ -330,8 +330,8 @@ async function pump(ms) {
   ok('象棋悔棋不抛异常', !xqUndoErr, xqUndoErr ? xqUndoErr.message : '');
   await pump(1200);
   await pump(3000);                      // 动画 + 之后 AI 的应对
-  ok('象棋悔棋后界面恢复正常（不停留在 AI 思考中）',
-    /点自己的棋子|本局已结束/.test(contentOf('hint')), contentOf('hint'));
+  ok('象棋悔棋后界面恢复正常（不停留在对手想棋中）',
+    /点己方棋子|这局下完了/.test(contentOf('hint')), contentOf('hint'));
 
   // --- 回归：悔棋动画被"开新局"打断后，btnUndo 的 is-loading 不得永久残留（QA 高优 bug） ---
   // 复现场景：悔棋动画进行中（is-loading 已加、anim 未结束）用户点了"开始新对局"，
