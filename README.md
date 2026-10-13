@@ -22,7 +22,7 @@
 ```
 六子棋源代码/
 ├─ run.py               统一入口（打包 / 源码运行），失败自动降级文字菜单
-├─ 启动六子棋.bat        源码运行（需 venv）
+├─ 启动弈趣棋苑.bat      源码运行（需 venv）
 ├─ build_exe.bat        一键打包（资源全部内嵌，自包含）
 ├─ setup_dev.bat        一键建 venv + 装依赖
 ├─ requirements.txt
@@ -94,8 +94,8 @@
 
 ## 三、运行
 
-- **源码运行**：双击 `启动六子棋.bat`（需已建 venv，见 setup_dev.bat）。
-- **打包运行**：先跑 `build_exe.bat` 生成 `dist\六子棋\六子棋.exe`，双击即可。
+- **源码运行**：双击 `启动弈趣棋苑.bat`（需已建 venv，见 setup_dev.bat）。
+- **打包运行**：先跑 `build_exe.bat` 生成 `dist\弈趣棋苑\弈趣棋苑.exe`，双击即可。
 - **命令行对弈**：`python -m src.liuziqi.main --cli`。
 
 ### PostgreSQL 战绩存档（可选）
@@ -126,7 +126,7 @@ python scripts\运行测试.py           # 没装 pytest 时的兜底跑手
 build_exe.bat
 ```
 
-- 产物：`dist\六子棋\六子棋.exe`（onedir，自包含全部资源）。
+- 产物：`dist\弈趣棋苑\弈趣棋苑.exe`（onedir，自包含全部资源）。
 - 全部资源通过 `--add-data` 内嵌；同时复制一份到 exe 同目录 `assets\`、`config\`，
   便于用户放入自定义音乐或修改配置，二者以 exe 同目录为准。
 
